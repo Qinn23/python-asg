@@ -1,5 +1,6 @@
 import tkinter as tk
 from homework_planner import open_homework_planner_window
+from pomodoro_timer import PomodoroTimer  # Import the PomodoroTimer class
 
 # Colors and fonts
 BG_COLOR = "#f5f6fa"
@@ -24,10 +25,20 @@ def open_calendar_app():
     cal_window.configure(bg=BG_COLOR)
     tk.Label(cal_window, text="Calendar App (Coming Soon!)", font=FONT_BTN, bg=BG_COLOR, fg=TEXT_COLOR).pack(padx=30, pady=30, fill="both", expand=True)
 
+def open_pomodoro_timer():
+    # Create a new top-level window for the Pomodoro Timer
+    pomo_window = tk.Toplevel(root)
+    pomo_window.title("Pomodoro Timer")
+    pomo_window.geometry("800x600")  # Match the size from pomodoro_timer.py
+    pomo_window.configure(bg='#f5f5f5')  # Match the background color
+    
+    # Initialize the Pomodoro Timer
+    PomodoroTimer(pomo_window)  # This will create the timer in the new window
+
 root = tk.Tk()
 root.title("TAR UMT Student Assistant App")
 root.configure(bg=BG_COLOR)
-root.geometry("420x320")
+root.geometry("420x400")
 root.resizable(True, True)
 
 # Center the window
@@ -53,6 +64,11 @@ btn_cal = tk.Button(main_frame, text="Calendar App", width=22, height=2, bg=BTN_
 btn_cal.pack(pady=10)
 btn_cal.bind("<Enter>", on_enter)
 btn_cal.bind("<Leave>", on_leave)
+
+btn_pomo = tk.Button(main_frame, text="Pomodoro Timer", width=22, height=2, bg=BTN_COLOR, fg="white", font=FONT_BTN, bd=0, activebackground=BTN_HOVER, activeforeground="white", command=open_pomodoro_timer, cursor="hand2")
+btn_pomo.pack(pady=10)
+btn_pomo.bind("<Enter>", on_enter)
+btn_pomo.bind("<Leave>", on_leave)
 
 tk.Label(main_frame, text="© 2025 TAR UMT Student Assistant", font=("Segoe UI", 9), bg=BG_COLOR, fg="#636e72").pack(side="bottom", pady=10, fill="x")
 
