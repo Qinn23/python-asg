@@ -1,6 +1,7 @@
 import tkinter as tk
 from homework_planner import open_homework_planner_window
 from pomodoro_timer import PomodoroTimer  # Import the PomodoroTimer class
+from calandar_timetable import open_calendar_app_window
 
 # Colors and fonts
 BG_COLOR = "#f5f6fa"
@@ -20,11 +21,8 @@ def open_homework_planner():
     open_homework_planner_window()
 
 def open_calendar_app():
-    cal_window = tk.Toplevel(root)
-    cal_window.title("Calendar App")
-    cal_window.configure(bg=BG_COLOR)
-    tk.Label(cal_window, text="Calendar App (Coming Soon!)", font=FONT_BTN, bg=BG_COLOR, fg=TEXT_COLOR).pack(padx=30, pady=30, fill="both", expand=True)
-
+    open_calendar_app_window()
+    
 def open_pomodoro_timer():
     # Create a new top-level window for the Pomodoro Timer
     pomo_window = tk.Toplevel(root)
