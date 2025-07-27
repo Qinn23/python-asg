@@ -1,8 +1,11 @@
 import tkinter as tk
 from tkinter import ttk, messagebox
 from datetime import datetime
+import json
+import os
 
 homework_list = []  # In-memory storage for homework tasks
+HOMEWORK_FILE = "homework_data.json"  # File to store homework data
 
 # Helper for date selection
 def get_date_from_combobox(year_var, month_var, day_var):
@@ -39,6 +42,7 @@ def add_homework(subject, title, description, due_entry, status, tree, add_win):
         'due_date': due_date,
         'status': status
     })
+    save_homework_data()  # Save data after adding
     refresh_homework(tree)
     add_win.destroy()
 
@@ -60,6 +64,7 @@ def edit_homework(idx, subject, title, description, due_entry, status, tree, edi
         'due_date': due_date,
         'status': status
     }
+    save_homework_data()  # Save data after editing
     refresh_homework(tree)
     edit_win.destroy()
 
@@ -73,6 +78,7 @@ def delete_homework(tree):
     confirm = messagebox.askyesno("Confirm Delete", "Are you sure you want to delete this homework entry?")
     if confirm:
         del homework_list[idx]
+        save_homework_data()  # Save data after deleting
         refresh_homework(tree)
 
 # Function to open the add homework window
@@ -146,8 +152,37 @@ def open_edit_homework(tree):
     tk.Button(edit_win, text="Save Changes", command=lambda: edit_homework(
         idx, subject_entry.get(), title_entry.get(), desc_entry.get(), due_entry, status_var.get(), tree, edit_win)).pack(pady=15)
 
+# Function to load homework data from file
+def load_homework_data():
+    """Load homework data from JSON file"""
+    global homework_list
+    try:
+        if os.path.exists(HOMEWORK_FILE):
+            with open(HOMEWORK_FILE, 'r') as f:
+                homework_list = json.load(f)
+        else:
+            homework_list = []
+    except Exception as e:
+        print(f"Error loading homework data: {e}")
+        homework_list = []
+
+# Function to save homework data to file
+def save_homework_data():
+    """Save homework data to JSON file"""
+    try:
+        with open(HOMEWORK_FILE, 'w') as f:
+            json.dump(homework_list, f, indent=2)
+        return True
+    except Exception as e:
+        print(f"Error saving homework data: {e}")
+        messagebox.showerror("Save Error", f"Failed to save homework data: {e}")
+        return False
+
 # Main Homework Planner window
 def open_homework_planner_window():
+    # Load homework data when window opens
+    load_homework_data()
+    
     hw_win = tk.Toplevel()
     hw_win.title("Homework Planner")
     hw_win.geometry("600x450")
@@ -181,5 +216,6 @@ def open_homework_planner_window():
     tk.Button(btn_frame, text="Add Homework", command=lambda: open_add_homework(tree)).pack(side='left', padx=5)
     tk.Button(btn_frame, text="Edit Homework", command=lambda: open_edit_homework(tree)).pack(side='left', padx=5)
     tk.Button(btn_frame, text="Delete Homework", command=lambda: delete_homework(tree)).pack(side='left', padx=5)
+    tk.Button(btn_frame, text="Save Data", command=lambda: save_homework_data() and messagebox.showinfo("Success", "Homework data saved successfully!")).pack(side='left', padx=5)
 
 # For main.py: import and call open_homework_planner_window() 
