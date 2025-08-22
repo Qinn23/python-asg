@@ -1,1 +1,1 @@
-{"focus_time": 25, "break_time": 5, "long_break_time": 10, "coins": 0, "cat_items": [], "focus_sound": null, "break_sound": null, "task_complete_sound": null}
+{"focus_time": 25, "break_time": 5, "long_break_time": 10, "coins": 0, "cat_items": ["Fish", "Fish", "Fish"], "focus_sound": null, "break_sound": null, "task_complete_sound": null}
