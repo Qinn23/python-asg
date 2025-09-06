@@ -8,6 +8,7 @@ import json
 import os
 import webbrowser
 from PIL import Image, ImageTk
+import pygame
 
 class Timer:
     def __init__(self, duration=0):
@@ -33,7 +34,7 @@ class PomodoroTimer(Timer):
     def __init__(self, root):
         self.root = root
         self.root.title("Purr-odoro Timer")
-        self.root.geometry("800x600")
+        self.root.geometry("750x800")
         self.root.configure(bg='#f5f5f5')
 
         # Load settings or create default
@@ -46,7 +47,12 @@ class PomodoroTimer(Timer):
         self.pomodoro_count = 0
         self.coins = 10  # Starting coins
         self.current_task = ""
+        self.tasks = [] 
         self.cat_state = "normal"  # normal, sleeping, happy
+
+        self.timer_after_id = None
+        self.current_duration = self.settings['focus_time'] * 60
+        self.remaining_time = self.current_duration
 
         # Setup UI
         self.setup_ui()
@@ -96,15 +102,33 @@ class PomodoroTimer(Timer):
         self.mode_label = tk.Label(self.top_frame, text="Focus Time", font=('Arial', 18), bg='#f5f5f5', fg='#d63031')
         self.mode_label.pack()
 
-        # Task note paper
-        self.task_canvas = tk.Canvas(self.middle_frame, width=200, height=150, bg='#fffbdf', highlightthickness=0)
-        self.task_canvas.pack(side=tk.RIGHT, padx=20)
+        # Task list section (replace previous task_canvas code)
+        task_frame = tk.Frame(self.middle_frame, bg='#f5f5f5')
+        task_frame.pack(side=tk.RIGHT, padx=20)
 
-        self.task_canvas.create_rectangle(0, 0, 200, 150, fill='#fffbdf', outline='#d4b483')
-        self.task_canvas.create_text(100, 30, text="Current Task:", font=('Arial', 12, 'bold'))
-        self.task_text = self.task_canvas.create_text(100, 70, text="No task set", font=('Arial', 12), width=180)
+        tk.Label(task_frame, text="Tasks:", font=('Arial', 12, 'bold'), bg='#f5f5f5').pack()
 
-        # Cat display (image instead of drawing)
+        # NOTE: exportselection=False keeps selection even after focus changes (so Delete button works)
+        self.task_listbox = tk.Listbox(task_frame, width=25, height=8, font=('Arial', 12),
+                               exportselection=False, selectmode=tk.SINGLE)
+        self.task_listbox.pack(pady=5)
+
+        # Buttons for tasks
+        btn_frame = tk.Frame(task_frame, bg='#f5f5f5')
+        btn_frame.pack()
+
+        ttk.Button(btn_frame, text="Add Task", command=self.add_task).grid(row=0, column=0, padx=5)
+        ttk.Button(btn_frame, text="Delete Task", command=self.delete_task).grid(row=0, column=1, padx=5)
+        ttk.Button(btn_frame, text="Clear Tasks", command=self.clear_tasks).grid(row=0, column=2, padx=5)
+        self.task_hint = tk.Label(task_frame,
+                          text="💡 Select a task from the list before pressing Delete",
+                          font=('Arial', 10), fg="gray", bg='#f5f5f5')
+        self.task_hint.pack(pady=5)
+
+        # Destroy hint after 5 seconds
+        self.root.after(5000, self.task_hint.destroy)
+        
+        # Display cat image
         self.cat_canvas = tk.Canvas(self.middle_frame, width=200, height=200, bg='#f5f5f5', highlightthickness=0)
         self.cat_canvas.pack(side=tk.LEFT, padx=20)
 
@@ -170,9 +194,6 @@ class PomodoroTimer(Timer):
         ttk.Button(sound_frame, text="Set Completion Sound", command=lambda: self.set_sound('task_complete_sound')).grid(row=0, column=2, padx=5)
         ttk.Button(sound_frame, text="Connect to Music App", command=self.connect_music_app).grid(row=0, column=3, padx=5)
 
-        # Start with task input
-        self.set_task()
-
     def set_cat_state(self, state):
         if state == "normal":
             self.cat_canvas.itemconfig(self.cat_image_id, image=self.cat_normal)
@@ -182,11 +203,65 @@ class PomodoroTimer(Timer):
             self.cat_canvas.itemconfig(self.cat_image_id, image=self.cat_happy)
         self.cat_state = state
 
-    def set_task(self):
-        task = simpledialog.askstring("Set Task", "What would you like to focus on this session?")
-        if task:
-            self.current_task = task
-            self.task_canvas.itemconfigure(self.task_text, text=task)
+    def add_task(self):
+        task_window = tk.Toplevel(self.root)
+        task_window.title("Add Task")
+        task_window.geometry("400x150")  
+
+        tk.Label(task_window, text="Enter a new task:", font=('Arial', 12)).pack(pady=10)
+        task_entry = ttk.Entry(task_window, width=40, font=('Arial', 12))
+        task_entry.pack(pady=5)
+        task_entry.focus_set()
+
+        def save_task():
+            task = task_entry.get().strip()
+            if task:
+                self.tasks.append(task)
+                self.task_listbox.insert(tk.END, task)
+                last = self.task_listbox.size() - 1
+                self.task_listbox.selection_clear(0, tk.END)
+                self.task_listbox.selection_set(last)
+                self.task_listbox.see(last)
+                self.current_task = task
+                task_window.destroy()
+
+        ttk.Button(task_window, text="Add Task", command=save_task).pack(pady=10)
+
+        task_window.transient(self.root)  
+        task_window.grab_set()            
+        self.root.wait_window(task_window)
+
+    def delete_task(self):
+        selection = self.task_listbox.curselection()
+        if not selection:
+            return
+
+        # If multiple are selected (if you ever change selectmode), delete in reverse order
+        indices = list(selection)
+        for index in reversed(indices):
+            # remove from backing list and Listbox
+            try:
+                del self.tasks[index]
+            except IndexError:
+                pass
+        self.task_listbox.delete(index)
+
+        # If current_task was deleted, clear it
+        if self.current_task and self.current_task not in self.tasks:
+            self.current_task = ""
+
+    def clear_tasks(self):
+        if messagebox.askyesno("Clear All Tasks", "Remove ALL tasks?"):
+            self.tasks.clear()
+            self.task_listbox.delete(0, tk.END)
+            self.current_task = ""
+
+    def select_task(self):
+        sel = self.task_listbox.curselection()
+        if sel:
+            idx = sel[0]
+            self.current_task = self.tasks[idx]
+
 
     def start_timer(self):
         if not self.current_task:
@@ -218,30 +293,40 @@ class PomodoroTimer(Timer):
 
     def skip_timer(self):
         self.is_running = False
-        self.start_button.config(state=tk.NORMAL)
-        self.pause_button.config(state=tk.DISABLED)
+
+        # Cancel pending timer update if exists
+        if self.timer_after_id:
+            self.root.after_cancel(self.timer_after_id)
+            self.timer_after_id = None
+
         self.next_phase()
 
+        # Allow user to start again
+        self.start_button.config(state=tk.NORMAL)
+        self.pause_button.config(state=tk.DISABLED)
+
     def reset_timer(self):
-        super().reset()
         self.is_running = False
         self.start_button.config(state=tk.NORMAL)
         self.pause_button.config(state=tk.DISABLED)
 
+        # Set remaining_time based on current mode
         if self.is_focus:
             self.remaining_time = self.settings['focus_time'] * 60
+            self.mode_label.config(text="Focus Time", fg='#d63031')
         else:
             self.remaining_time = self.settings['break_time'] * 60
+            self.mode_label.config(text="Break Time", fg='#00b894')
+
         self.update_display()
 
     def update_timer(self):
-        if self.is_running:
-            mins, secs = divmod(self.tick(), 60)
+        if self.remaining_time > 0 and self.is_running:
+            self.tick()
+            mins, secs = divmod(self.remaining_time, 60)
             self.clock_label.config(text=f"{mins:02d}:{secs:02d}")
-
-        if self.remaining_time > 0:
-            self.root.after(1000, self.update_timer)
-        else:
+            self.timer_after_id = self.root.after(1000, self.update_timer)
+        elif self.remaining_time <= 0:
             self.timer_complete()
 
     def timer_complete(self):
@@ -269,28 +354,46 @@ class PomodoroTimer(Timer):
                 self.remaining_time = self.settings['break_time'] * 60
                 self.mode_label.config(text="Break Time", fg='#00b894')
 
-            self.task_canvas.itemconfigure(self.task_text, fill='gray')
-            self.task_canvas.create_line(20, 70, 180, 70, fill='red', width=2)
+            # Strike-through effect in the Listbox (simulate completed task)
+            sel = self.task_listbox.curselection()
+            if sel:
+                idx = sel[0]
+                task_text = self.task_listbox.get(idx)
+                self.task_listbox.delete(idx)
+                self.task_listbox.insert(idx, f"✔ {task_text}")
+                self.task_listbox.itemconfig(idx, fg="gray")
+
         else:
             self.is_focus = True
             self.remaining_time = self.settings['focus_time'] * 60
             self.mode_label.config(text="Focus Time", fg='#d63031')
-            self.set_task()
+            self.select_task()
 
         self.update_display()
         self.start_button.config(state=tk.NORMAL)
 
     def next_phase(self):
         if self.is_focus:
-            self.is_focus = False
-            self.remaining_time = self.settings['break_time'] * 60
-            self.mode_label.config(text="Break Time", fg='#00b894')
+            self.pomodoro_count += 1
+
+            # Determine if it's time for a long break
+            if self.pomodoro_count % 4 == 0:
+                self.is_focus = False
+                self.current_duration = self.settings['long_break_time'] * 60
+                self.mode_label.config(text="Long Break Time", fg='#0984e3')
+            else:
+                self.is_focus = False
+                self.current_duration = self.settings['break_time'] * 60
+                self.mode_label.config(text="Break Time", fg='#00b894')
+
             self.set_cat_state("normal")
         else:
             self.is_focus = True
-            self.remaining_time = self.settings['focus_time'] * 60
+            self.current_duration = self.settings['focus_time'] * 60
             self.mode_label.config(text="Focus Time", fg='#d63031')
             self.set_cat_state("sleeping")
+
+        self.remaining_time = self.current_duration
         self.update_display()
 
     def update_display(self):
@@ -311,6 +414,8 @@ class PomodoroTimer(Timer):
             self.settings['long_break_time'] = long_break
 
             self.save_settings()
+            self.is_focus = True     
+            self.reset_timer() 
             messagebox.showinfo("Settings Saved", "Settings have been saved successfully!")
             self.reset_timer()
         except Exception as e:
@@ -318,16 +423,19 @@ class PomodoroTimer(Timer):
 
     def set_sound(self, sound_type):
         file_path = filedialog.askopenfilename(title=f"Select {sound_type.replace('_', ' ')}",
-                                               filetypes=(("WAV files", "*.wav"), ("All files", "*.*")))
+                                               filetypes=(("Mp3 files", "*.mp3"), ("All files", "*.*")))
         if file_path:
             self.settings[sound_type] = file_path
             self.save_settings()
 
     def play_sound(self, sound_file):
         try:
-            winsound.PlaySound(sound_file, winsound.SND_FILENAME | winsound.SND_ASYNC)
-        except:
-            pass
+            if sound_file:  
+                pygame.mixer.init()
+                pygame.mixer.music.load(sound_file)
+                pygame.mixer.music.play()
+        except Exception as e:
+            print(f"Error playing sound: {e}")
 
     def connect_music_app(self):
         choice = messagebox.askyesno("Music Apps",

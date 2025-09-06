@@ -1,1 +1,1 @@
-{"focus_time": 25, "break_time": 5, "long_break_time": 10, "coins": 5, "cat_items": ["Fish", "Fish", "Fish", "Fish"], "focus_sound": null, "break_sound": null, "task_complete_sound": null}
+{"focus_time": 1, "break_time": 1, "long_break_time": 1, "coins": 5, "cat_items": ["Fish", "Fish", "Fish", "Fish", "Ball"], "focus_sound": "Pomodoro_defaultsound/beep-104060.mp3", "break_sound": "Pomodoro_defaultsound/cute-cat-352656.mp3", "task_complete_sound": "Pomodoro_defaultsound/cat-hit-352651.mp3"}
