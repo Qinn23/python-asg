@@ -24,17 +24,12 @@ class Timer:
 
     def reset(self):
         self.remaining_time = self.duration
-
-    def tick(self):
-        if self.is_running and self.remaining_time > 0:
-            self.remaining_time -= 1
-        return self.remaining_time
     
 class PomodoroTimer(Timer):
     def __init__(self, root):
         self.root = root
         self.root.title("Purr-odoro Timer")
-        self.root.geometry("750x800")
+        #self.root.geometry("750x800")
         self.root.configure(bg='#f5f5f5')
 
         # Load settings or create default
@@ -49,6 +44,7 @@ class PomodoroTimer(Timer):
         self.current_task = ""
         self.tasks = [] 
         self.cat_state = "normal"  # normal, sleeping, happy
+        self.focus_sessions_in_cycle = 0
 
         self.timer_after_id = None
         self.current_duration = self.settings['focus_time'] * 60
@@ -95,12 +91,20 @@ class PomodoroTimer(Timer):
         self.bottom_frame.pack(pady=20)
 
         # Clock display
-        self.clock_label = tk.Label(self.top_frame, text="25:00", font=('Arial', 48), bg='#f5f5f5')
+        mins, secs = divmod(self.remaining_time, 60)
+        self.clock_label = tk.Label(
+        self.top_frame,
+        text=f"{mins:02d}:{secs:02d}",
+        font=('Arial', 48),
+        bg='#f5f5f5'
+        )
         self.clock_label.pack()
 
         # Mode label
         self.mode_label = tk.Label(self.top_frame, text="Focus Time", font=('Arial', 18), bg='#f5f5f5', fg='#d63031')
         self.mode_label.pack()
+        self.cycle_label = tk.Label(self.top_frame, text="Focus Session 1/4", font=('Arial', 12), bg='#f5f5f5', fg='#666')
+        self.cycle_label.pack()
 
         # Task list section (replace previous task_canvas code)
         task_frame = tk.Frame(self.middle_frame, bg='#f5f5f5')
@@ -125,6 +129,11 @@ class PomodoroTimer(Timer):
                           font=('Arial', 10), fg="gray", bg='#f5f5f5')
         self.task_hint.pack(pady=5)
 
+         # Mark Complete button (only visible during long breaks)
+        self.mark_complete_button = ttk.Button(btn_frame, text="Mark Complete", command=self.mark_task_complete)
+        self.mark_complete_button.grid(row=1, column=0, columnspan=3, pady=5)
+        self.mark_complete_button.grid_remove() 
+
         # Destroy hint after 5 seconds
         self.root.after(5000, self.task_hint.destroy)
         
@@ -137,7 +146,7 @@ class PomodoroTimer(Timer):
         self.cat_sleeping = ImageTk.PhotoImage(Image.open("Pomodoro_cat/Sleep.png").resize((200, 200)))
         self.cat_happy = ImageTk.PhotoImage(Image.open("Pomodoro_cat/EyesOpenHeart.png").resize((200, 200)))
 
-        # Put initial cat image on canvas
+        # initial cat image
         self.cat_image_id = self.cat_canvas.create_image(100, 100, image=self.cat_normal)
 
         # Timer controls
@@ -150,7 +159,7 @@ class PomodoroTimer(Timer):
         self.skip_button = ttk.Button(self.bottom_frame, text="Skip", command=self.skip_timer)
         self.skip_button.grid(row=0, column=2, padx=10)
 
-        self.reset_button = ttk.Button(self.bottom_frame, text="Reset", command=self.reset_timer)
+        self.reset_button = ttk.Button(self.bottom_frame, text="Reset timer", command=self.reset_timer)
         self.reset_button.grid(row=0, column=3, padx=10)
 
         # Settings area
@@ -185,6 +194,9 @@ class PomodoroTimer(Timer):
         shop_button = ttk.Button(coin_frame, text="Cat Shop", command=self.open_cat_shop)
         shop_button.pack(side=tk.LEFT)
 
+        self.pomodoro_label = tk.Label(coin_frame, text=f"Completed Pomodoros: {self.pomodoro_count}", font=('Arial', 14), bg='#f5f5f5')
+        self.pomodoro_label.pack(side=tk.RIGHT, padx=10)
+
         # Sound buttons
         sound_frame = tk.Frame(self.root, bg='#f5f5f5')
         sound_frame.pack(pady=10)
@@ -193,6 +205,16 @@ class PomodoroTimer(Timer):
         ttk.Button(sound_frame, text="Set Break Sound", command=lambda: self.set_sound('break_sound')).grid(row=0, column=1, padx=5)
         ttk.Button(sound_frame, text="Set Completion Sound", command=lambda: self.set_sound('task_complete_sound')).grid(row=0, column=2, padx=5)
         ttk.Button(sound_frame, text="Connect to Music App", command=self.connect_music_app).grid(row=0, column=3, padx=5)
+
+    def update_cycle_display(self):
+        if self.is_focus:
+            current_focus = (self.focus_sessions_in_cycle % 4) + 1
+            self.cycle_label.config(text=f"Focus Session {current_focus}/4")
+        else:
+            if self.focus_sessions_in_cycle % 4 == 0:
+                self.cycle_label.config(text="Long Break Time")
+            else:
+                self.cycle_label.config(text="Short Break Time")
 
     def set_cat_state(self, state):
         if state == "normal":
@@ -256,31 +278,40 @@ class PomodoroTimer(Timer):
             self.task_listbox.delete(0, tk.END)
             self.current_task = ""
 
-    def select_task(self):
-        sel = self.task_listbox.curselection()
-        if sel:
-            idx = sel[0]
-            self.current_task = self.tasks[idx]
-
 
     def start_timer(self):
-        if not self.current_task:
-            messagebox.showwarning("No Task", "Please set a task first!")
-            return
+        # For focus sessions, ensure a task is selected
+        if self.is_focus:
+            sel = self.task_listbox.curselection()
+            if not sel:
+                messagebox.showwarning("No Task", "Please select or add a task first!")
+                return
 
+            selected_task = self.task_listbox.get(sel[0]).strip()
+
+            # Prevent starting on completed task
+            if selected_task.startswith("✔"):
+                messagebox.showwarning("Task Completed", "Please select or add a new task before starting.")
+                return
+
+            # Set current task
+            self.current_task = selected_task
+
+        # --- Timer state handling ---
         if not self.is_running:
-            super().start()  # Start base Timer
+            self.is_running = True
             self.start_button.config(state=tk.DISABLED)
             self.pause_button.config(state=tk.NORMAL)
 
-        if self.is_focus:
-            if self.settings['focus_sound']:
-                Thread(target=self.play_sound, args=(self.settings['focus_sound'],)).start()
-            self.set_cat_state("sleeping")
-        else:
-            if self.settings['break_sound']:
-                Thread(target=self.play_sound, args=(self.settings['break_sound'],)).start()
-            self.set_cat_state("normal")
+            # Handle sounds and cat states
+            if self.is_focus:
+                if self.settings['focus_sound']:
+                    Thread(target=self.play_sound, args=(self.settings['focus_sound'],)).start()
+                self.set_cat_state("sleeping")
+            else:
+                if self.settings['break_sound']:
+                    Thread(target=self.play_sound, args=(self.settings['break_sound'],)).start()
+                self.set_cat_state("normal")
 
         self.update_timer()
 
@@ -299,6 +330,10 @@ class PomodoroTimer(Timer):
             self.root.after_cancel(self.timer_after_id)
             self.timer_after_id = None
 
+        # If skipping a focus session, still mark task as complete and award coins
+        if self.is_focus:
+            self.complete_focus_session()
+    
         self.next_phase()
 
         # Allow user to start again
@@ -322,12 +357,47 @@ class PomodoroTimer(Timer):
 
     def update_timer(self):
         if self.remaining_time > 0 and self.is_running:
-            self.tick()
+            self.remaining_time -= 1 
             mins, secs = divmod(self.remaining_time, 60)
             self.clock_label.config(text=f"{mins:02d}:{secs:02d}")
             self.timer_after_id = self.root.after(1000, self.update_timer)
         elif self.remaining_time <= 0:
             self.timer_complete()
+
+    def mark_task_complete(self):
+        sel = self.task_listbox.curselection()
+        if not sel:
+            messagebox.showwarning("No Task Selected", "Please select a task to mark as complete!")
+            return
+    
+        index = sel[0]
+        task_text = self.task_listbox.get(index).lstrip("✔ ").strip()
+    
+        # Don't mark already completed tasks
+        if task_text.startswith("✔"):
+            messagebox.showinfo("Already Complete", "This task is already marked as complete!")
+            return
+    
+        # Mark task as complete
+        self.task_listbox.delete(index)
+        self.task_listbox.insert(index, f"✔ {task_text}")
+        self.task_listbox.itemconfig(index, fg="gray")
+    
+        # Update backing list
+        self.tasks[index] = f"✔ {task_text}"
+    
+        # Award coins for completing task
+        coins_earned = random.randint(1, 3)
+        self.coins += coins_earned
+        self.settings['coins'] = self.coins
+        self.save_settings()
+        self.coin_label.config(text=f"Coins: {self.coins}")
+    
+        # Show happy cat briefly
+        self.set_cat_state("happy")
+        self.root.after(2000, lambda: self.set_cat_state("happy"))
+    
+        messagebox.showinfo("Task Complete!", f"Task marked as complete! You earned {coins_earned} coins!")
 
     def timer_complete(self):
         self.is_running = False
@@ -335,66 +405,80 @@ class PomodoroTimer(Timer):
             Thread(target=self.play_sound, args=(self.settings['task_complete_sound'],)).start()
 
         if self.is_focus:
+            # Focus session completed
             self.pomodoro_count += 1
-            messagebox.showinfo("Focus Completed", f"Great job! You've completed {self.pomodoro_count} Pomodoros!")
-
-            coins_earned = random.randint(1, 3)
-            self.coins += coins_earned
-            self.settings['coins'] = self.coins
-            self.save_settings()
-            self.coin_label.config(text=f"Coins: {self.coins}")
-
-            if self.pomodoro_count % 4 == 0:
-                self.is_focus = False
-                self.remaining_time = self.settings['long_break_time'] * 60
-                self.mode_label.config(text="Long Break Time", fg='#0984e3')
-                messagebox.showinfo("Long Break", f"Take a long break of {self.settings['long_break_time']} minutes.")
-            else:
-                self.is_focus = False
-                self.remaining_time = self.settings['break_time'] * 60
-                self.mode_label.config(text="Break Time", fg='#00b894')
-
-            # Strike-through effect in the Listbox (simulate completed task)
-            sel = self.task_listbox.curselection()
-            if sel:
-                idx = sel[0]
-                task_text = self.task_listbox.get(idx)
-                self.task_listbox.delete(idx)
-                self.task_listbox.insert(idx, f"✔ {task_text}")
-                self.task_listbox.itemconfig(idx, fg="gray")
-
-        else:
-            self.is_focus = True
-            self.remaining_time = self.settings['focus_time'] * 60
-            self.mode_label.config(text="Focus Time", fg='#d63031')
-            self.select_task()
-
-        self.update_display()
+            messagebox.showinfo("Focus Completed", f"Great job! You've completed {self.pomodoro_count} focus sessions!")
+    
+        # Move to next phase
+        self.next_phase()
         self.start_button.config(state=tk.NORMAL)
+        self.pause_button.config(state=tk.DISABLED)
+
+    def complete_focus_session(self):
+        # Increment total Pomodoro count only (NOT the cycle count!)
+        self.pomodoro_count += 1
+        self.pomodoro_label.config(text=f"Completed Pomodoros: {self.pomodoro_count}")
+
+        # Award coins
+        coins_earned = random.randint(1, 3)
+        self.coins += coins_earned
+        self.settings['coins'] = self.coins
+        self.save_settings()
+        self.coin_label.config(text=f"Coins: {self.coins}")
+
+        # Auto-select the next unfinished task
+        next_task = None
+        for i in range(self.task_listbox.size()):
+            task_text = self.task_listbox.get(i)
+            if not task_text.startswith("✔"):
+                next_task = task_text
+                self.task_listbox.selection_clear(0, tk.END)
+                self.task_listbox.selection_set(i)
+                self.task_listbox.see(i)
+                break
+
+        if next_task:
+            self.current_task = next_task
+        else:
+            self.current_task = ""
+            messagebox.showinfo("No Tasks Left", "All tasks are complete! Please add a new one.")
 
     def next_phase(self):
         if self.is_focus:
-            self.pomodoro_count += 1
+            # End of focus session → increment cycle counter
+            self.focus_sessions_in_cycle += 1
 
-            # Determine if it's time for a long break
-            if self.pomodoro_count % 4 == 0:
+            # Every 4th focus → long break
+            if self.focus_sessions_in_cycle % 4 == 0:
                 self.is_focus = False
                 self.current_duration = self.settings['long_break_time'] * 60
                 self.mode_label.config(text="Long Break Time", fg='#0984e3')
+                self.mark_complete_button.grid()  # show "Mark Complete" button
+                messagebox.showinfo("Long Break!",
+                f"Time for a {self.settings['long_break_time']}-minute long break!\n\n"
+                "One Pomodoro cycle completed!\n"
+                "Use the 'Mark Complete' button to mark any tasks you've finished.")
             else:
+                # Otherwise → short break
                 self.is_focus = False
                 self.current_duration = self.settings['break_time'] * 60
                 self.mode_label.config(text="Break Time", fg='#00b894')
+                self.mark_complete_button.grid_remove()
 
             self.set_cat_state("normal")
+
         else:
+            # Break finished → go back to focus
             self.is_focus = True
             self.current_duration = self.settings['focus_time'] * 60
             self.mode_label.config(text="Focus Time", fg='#d63031')
+            self.mark_complete_button.grid_remove()
             self.set_cat_state("sleeping")
 
+        # Reset timer for the new phase
         self.remaining_time = self.current_duration
         self.update_display()
+        self.update_cycle_display()
 
     def update_display(self):
         mins, secs = divmod(self.remaining_time, 60)
@@ -417,7 +501,6 @@ class PomodoroTimer(Timer):
             self.is_focus = True     
             self.reset_timer() 
             messagebox.showinfo("Settings Saved", "Settings have been saved successfully!")
-            self.reset_timer()
         except Exception as e:
             messagebox.showerror("Invalid Input", str(e))
 
