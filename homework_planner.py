@@ -1,10 +1,36 @@
 import tkinter as tk
 from tkinter import ttk, messagebox
+from tkinter.font import Font
+
+# Encapsulate homework data in a class
+class Homework:
+    def __init__(self, subject, title, description, due_date, status):
+        self.subject = subject
+        self.title = title
+        self.description = description
+        self.due_date = due_date
+        self.status = status
+
+    def to_dict(self):
+        return {
+            'subject': self.subject,
+            'title': self.title,
+            'description': self.description,
+            'due_date': self.due_date,
+            'status': self.status
+        }
+
+    @staticmethod
+    def from_dict(d):
+        return Homework(d['subject'], d['title'], d['description'], d['due_date'], d['status'])
 from datetime import datetime
 import json
 import os
 
-homework_list = []  # In-memory storage for homework tasks
+homework_list = []  # In-memory storage for Homework objects
+# Store checked state for each row (by index)
+checked_rows = set()
+selected_edit_row = {'idx': None}
 HOMEWORK_FILE = "homework_data.json"  # File to store homework data
 
 # Helper for date selection
@@ -18,11 +44,12 @@ def refresh_homework(tree, filter_text=""):
     filter_text = filter_text.lower()
     for idx, hw in enumerate(homework_list):
         if (
-            filter_text in hw['subject'].lower() or
-            filter_text in hw['title'].lower() or
-            filter_text in hw['status'].lower()
+            filter_text in hw.subject.lower() or
+            filter_text in hw.title.lower() or
+            filter_text in hw.status.lower()
         ):
-            tree.insert('', 'end', iid=idx, values=(hw['subject'], hw['title'], hw['due_date'], hw['status']))
+            checked = '☑' if idx in checked_rows else '☐'
+            tree.insert('', 'end', iid=idx, values=(checked, hw.subject, hw.title, hw.due_date, hw.status))
 
 # Function to add homework
 def add_homework(subject, title, description, due_entry, status, tree, add_win):
@@ -35,13 +62,7 @@ def add_homework(subject, title, description, due_entry, status, tree, add_win):
     except ValueError:
         messagebox.showwarning("Input Error", "Due Date must be in YYYY-MM-DD format.")
         return
-    homework_list.append({
-        'subject': subject,
-        'title': title,
-        'description': description,
-        'due_date': due_date,
-        'status': status
-    })
+    homework_list.append(Homework(subject, title, description, due_date, status))
     save_homework_data()  # Save data after adding
     refresh_homework(tree)
     add_win.destroy()
@@ -57,27 +78,25 @@ def edit_homework(idx, subject, title, description, due_entry, status, tree, edi
     except ValueError:
         messagebox.showwarning("Input Error", "Due Date must be in YYYY-MM-DD format.")
         return
-    homework_list[idx] = {
-        'subject': subject,
-        'title': title,
-        'description': description,
-        'due_date': due_date,
-        'status': status
-    }
+    homework_list[idx] = Homework(subject, title, description, due_date, status)
     save_homework_data()  # Save data after editing
     refresh_homework(tree)
     edit_win.destroy()
 
 # Function to delete homework
 def delete_homework(tree):
-    selected = tree.selection()
-    if not selected:
-        messagebox.showwarning("No selection", "Please select a homework entry to delete.")
+    if not checked_rows:
+        messagebox.showwarning("No selection", "Please check one or more homework entries to delete.")
         return
-    idx = int(selected[0])
-    confirm = messagebox.askyesno("Confirm Delete", "Are you sure you want to delete this homework entry?")
+    if len(checked_rows) == 1:
+        msg = "Are you sure you want to delete this homework entry?"
+    else:
+        msg = f"Are you sure you want to delete these {len(checked_rows)} homework entries?"
+    confirm = messagebox.askyesno("Confirm Delete", msg)
     if confirm:
-        del homework_list[idx]
+        for idx in sorted(checked_rows, reverse=True):
+            del homework_list[idx]
+        checked_rows.clear()
         save_homework_data()  # Save data after deleting
         refresh_homework(tree)
 
@@ -113,11 +132,11 @@ def open_add_homework(tree):
 
 # Function to open the edit homework window
 def open_edit_homework(tree):
-    selected = tree.selection()
-    if not selected:
-        messagebox.showwarning("No selection", "Please select a homework entry to edit.")
+    global selected_edit_row
+    idx = selected_edit_row.get('idx')
+    if idx is None:
+        messagebox.showwarning("No selection", "Please click a row (not the checkbox) to select a homework entry to edit.")
         return
-    idx = int(selected[0])
     hw = homework_list[idx]
 
     edit_win = tk.Toplevel()
@@ -126,26 +145,26 @@ def open_edit_homework(tree):
 
     tk.Label(edit_win, text="Subject:").pack(anchor='w', padx=10, pady=(10,0))
     subject_entry = tk.Entry(edit_win)
-    subject_entry.insert(0, hw['subject'])
+    subject_entry.insert(0, hw.subject)
     subject_entry.pack(fill='x', padx=10)
 
     tk.Label(edit_win, text="Title:").pack(anchor='w', padx=10, pady=(10,0))
     title_entry = tk.Entry(edit_win)
-    title_entry.insert(0, hw['title'])
+    title_entry.insert(0, hw.title)
     title_entry.pack(fill='x', padx=10)
 
     tk.Label(edit_win, text="Description:").pack(anchor='w', padx=10, pady=(10,0))
     desc_entry = tk.Entry(edit_win)
-    desc_entry.insert(0, hw['description'])
+    desc_entry.insert(0, hw.description)
     desc_entry.pack(fill='x', padx=10)
 
     tk.Label(edit_win, text="Due Date (YYYY-MM-DD):").pack(anchor='w', padx=10, pady=(10,0))
     due_entry = tk.Entry(edit_win)
-    due_entry.insert(0, hw['due_date'])
+    due_entry.insert(0, hw.due_date)
     due_entry.pack(fill='x', padx=10)
 
     tk.Label(edit_win, text="Status:").pack(anchor='w', padx=10, pady=(10,0))
-    status_var = tk.StringVar(value=hw['status'])
+    status_var = tk.StringVar(value=hw.status)
     status_menu = ttk.Combobox(edit_win, textvariable=status_var, values=["Pending", "Completed"], state="readonly")
     status_menu.pack(fill='x', padx=10)
 
@@ -159,7 +178,8 @@ def load_homework_data():
     try:
         if os.path.exists(HOMEWORK_FILE):
             with open(HOMEWORK_FILE, 'r') as f:
-                homework_list = json.load(f)
+                data = json.load(f)
+                homework_list = [Homework.from_dict(d) for d in data]
         else:
             homework_list = []
     except Exception as e:
@@ -171,7 +191,7 @@ def save_homework_data():
     """Save homework data to JSON file"""
     try:
         with open(HOMEWORK_FILE, 'w') as f:
-            json.dump(homework_list, f, indent=2)
+            json.dump([hw.to_dict() for hw in homework_list], f, indent=2)
         return True
     except Exception as e:
         print(f"Error saving homework data: {e}")
@@ -197,12 +217,43 @@ def open_homework_planner_window():
     search_entry = tk.Entry(search_frame, textvariable=search_var)
     search_entry.pack(side='left', fill='x', expand=True, padx=(5, 0))
 
-    columns = ("Subject", "Title", "Due Date", "Status")
-    tree = ttk.Treeview(hw_win, columns=columns, show='headings')
-    for col in columns:
+
+    columns = ("Select", "Subject", "Title", "Due Date", "Status")
+    tree = ttk.Treeview(hw_win, columns=columns, show='headings', selectmode='none')
+    tree.heading("Select", text="☐", anchor='center')
+    tree.column("Select", width=40, anchor='center', stretch=False)
+    for col in columns[1:]:
         tree.heading(col, text=col)
         tree.column(col, width=120)
     tree.pack(fill='both', expand=True, padx=10, pady=10)
+
+    # Add click event to toggle checkbox
+    def on_tree_click(event):
+        region = tree.identify("region", event.x, event.y)
+        col = tree.identify_column(event.x)
+        row = tree.identify_row(event.y)
+        if region == "cell":
+            if col == "#1":  # Checkbox column
+                if row:
+                    idx = int(row)
+                    if idx in checked_rows:
+                        checked_rows.remove(idx)
+                    else:
+                        checked_rows.add(idx)
+                    refresh_homework(tree, search_var.get())
+            else:
+                # Select row for editing
+                if row:
+                    idx = int(row)
+                    global selected_edit_row
+                    selected_edit_row['idx'] = idx
+                    # Remove selection from all rows
+                    for item in tree.get_children():
+                        tree.item(item, tags=())
+                    # Highlight selected row
+                    tree.item(row, tags=('selected',))
+    tree.bind("<Button-1>", on_tree_click)
+    tree.tag_configure('selected', background='#cce5ff')
 
     def on_search(*args):
         refresh_homework(tree, search_var.get())
