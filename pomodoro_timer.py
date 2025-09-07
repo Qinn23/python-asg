@@ -29,7 +29,6 @@ class PomodoroTimer(Timer):
     def __init__(self, root):
         self.root = root
         self.root.title("Purr-odoro Timer")
-        #self.root.geometry("750x800")
         self.root.configure(bg='#f5f5f5')
 
         # Load settings or create default
