@@ -400,8 +400,6 @@ class PomodoroTimer(Timer):
 
     def timer_complete(self):
         self.is_running = False
-        if self.settings['task_complete_sound']:
-            Thread(target=self.play_sound, args=(self.settings['task_complete_sound'],)).start()
 
         if self.is_focus:
             # Focus session completed
@@ -453,6 +451,10 @@ class PomodoroTimer(Timer):
                 self.current_duration = self.settings['long_break_time'] * 60
                 self.mode_label.config(text="Long Break Time", fg='#0984e3')
                 self.mark_complete_button.grid()  # show "Mark Complete" button
+
+                if self.settings.get('task_complete_sound'):
+                    Thread(target=self.play_sound, args=(self.settings['task_complete_sound'],)).start()
+                    
                 messagebox.showinfo("Long Break!",
                 f"Time for a {self.settings['long_break_time']}-minute long break!\n\n"
                 "One Pomodoro cycle completed!\n"
