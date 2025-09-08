@@ -1,0 +1,9 @@
+{
+  "2025-09-11": [
+    {"title": "cocu", "category": "Timetable", "time": "10:00"},
+    {"title": "birthday", "category": "Others", "time": "18:00"}
+  ],
+  "2025-09-13": [
+    {"title": "python presentation", "category": "Assignment", "time": "09:00"}
+  ]
+}

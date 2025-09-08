@@ -1,149 +1,209 @@
 import tkinter as tk
-from tkinter import simpledialog, messagebox, Toplevel
+from tkinter import messagebox
 import calendar
 from datetime import datetime
+import json
+import os
+
 
 class CalendarApp:
     def __init__(self, root):
         self.root = root
-        self.root.title("📅 Calendar / Timetable App")
-        self.root.geometry("700x550")
-        self.root.config(bg="#f4f4f4")
-        self.events = {}  # { "YYYY-MM-DD": [{"title": "...", "category": "..."}] }
+        self.root.title("📅 Calendar App")
+        self.root.geometry("900x650")
+        self.root.configure(bg="#f8f9fa")
 
-        self.current_year = datetime.now().year
-        self.current_month = datetime.now().month
-        self.today = datetime.now().strftime("%Y-%m-%d")
+        self.jsonFile = "calendar_data.json"
 
-        # Header
-        self.header = tk.Label(root, text="", font=("Segoe UI", 20, "bold"), bg="#f4f4f4", fg="#333")
-        self.header.pack(pady=15)
+        # Load events
+        self.events = self.loadEvents()
 
-        # Navigation
-        nav_frame = tk.Frame(root, bg="#f4f4f4")
-        nav_frame.pack()
-        tk.Button(nav_frame, text="◀ Prev", command=self.prev_month, width=10, bg="#ddd").grid(row=0, column=0, padx=10)
-        tk.Button(nav_frame, text="Next ▶", command=self.next_month, width=10, bg="#ddd").grid(row=0, column=1, padx=10)
-        tk.Button(nav_frame, text="Jump to Date", command=self.jump_to_date, bg="#aaa", fg="white").grid(row=0, column=2, padx=10)
+        self.categoryColors = {
+            "Assignment": "#d68a8a",
+            "Timetable": "#6cb287",
+            "Others": "#4eb5f0"
+        }
 
-        # Calendar Grid
-        self.calendar_frame = tk.Frame(root, bg="#f4f4f4")
-        self.calendar_frame.pack(pady=20)
+        # Top Frame
+        topFrame = tk.Frame(root, bg="#f8f9fa")
+        topFrame.pack(pady=10)
 
-        # Upcoming Events
-        self.events_frame = tk.Frame(root, bg="#ffffff", bd=2, relief="groove")
-        self.events_frame.pack(fill="x", padx=20, pady=10)
-        tk.Label(self.events_frame, text="📌 Upcoming Events", font=("Arial", 12, "bold"), bg="white").pack(anchor="w", padx=10, pady=5)
-        self.upcoming_list = tk.Listbox(self.events_frame, height=5)
-        self.upcoming_list.pack(fill="x", padx=10, pady=5)
+        tk.Label(topFrame, text="Year:", bg="#f8f9fa").grid(row=0, column=0, padx=5)
+        self.yearVar = tk.IntVar(value=datetime.now().year)
+        yearOptions = [y for y in range(2000, 2101)]
+        yearMenu = tk.OptionMenu(topFrame, self.yearVar, *yearOptions, command=lambda e: self.drawCalendar())
+        yearMenu.grid(row=0, column=1, padx=5)
 
-        self.draw_calendar()
-        self.update_upcoming_events()
+        tk.Label(topFrame, text="Month:", bg="#f8f9fa").grid(row=0, column=2, padx=5)
+        self.monthVar = tk.StringVar(value=calendar.month_name[datetime.now().month])
+        monthOptions = list(calendar.month_name)[1:]
+        monthMenu = tk.OptionMenu(topFrame, self.monthVar, *monthOptions, command=lambda e: self.drawCalendar())
+        monthMenu.grid(row=0, column=3, padx=5)
 
-    def draw_calendar(self):
-        for widget in self.calendar_frame.winfo_children():
+        # Calendar Frame
+        self.calendarFrame = tk.Frame(root, bg="#f8f9fa")
+        self.calendarFrame.pack(fill="both", expand=True)
+
+        # Bottom Buttons
+        bottomFrame = tk.Frame(root, bg="#f8f9fa")
+        bottomFrame.pack(pady=10)
+
+        tk.Button(bottomFrame, text="➕ Add Event", command=self.openEventForm, bg="#28a745", fg="white", width=12).grid(row=0, column=0, padx=10)
+        tk.Button(bottomFrame, text="❌ Delete Event", command=self.deleteEvent, bg="#dc3545", fg="white", width=12).grid(row=0, column=1, padx=10)
+
+        self.drawCalendar()
+
+    # Load events from JSON
+    def loadEvents(self):
+        if os.path.exists(self.jsonFile):
+            with open(self.jsonFile, "r") as f:
+                return json.load(f)
+        return {}
+
+    # Save events to JSON
+    def saveEvents(self):
+        with open(self.jsonFile, "w") as f:
+            json.dump(self.events, f, indent=2)
+
+    # Draw calendar grid
+    def drawCalendar(self):
+        for widget in self.calendarFrame.winfo_children():
             widget.destroy()
 
-        # Update header
-        self.header.config(text=f"{calendar.month_name[self.current_month]} {self.current_year}")
+        # Month-Year Label
+        tk.Label(self.calendarFrame, text=f"{self.monthVar.get()} {self.yearVar.get()}",
+                 font=("Segoe UI", 16, "bold"), bg="#f8f9fa").grid(row=0, column=0, columnspan=7, pady=10)
 
-        # Weekday labels
+        # Weekday header
         days = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
         for col, day in enumerate(days):
-            tk.Label(self.calendar_frame, text=day, font=("Arial", 10, "bold"), bg="#f4f4f4").grid(row=0, column=col, padx=5, pady=5)
+            tk.Label(self.calendarFrame, text=day, font=("Segoe UI", 10, "bold"),
+                     bg="#8e9298", relief="ridge", width=14, height=2).grid(row=1, column=col, sticky="nsew")
 
-        # Dates
-        month_calendar = calendar.monthcalendar(self.current_year, self.current_month)
-        for row, week in enumerate(month_calendar, start=1):
+        # Dates grid
+        year, month = self.yearVar.get(), list(calendar.month_name).index(self.monthVar.get())
+        monthCalendar = calendar.monthcalendar(year, month)
+
+        for row, week in enumerate(monthCalendar, start=2):
             for col, day in enumerate(week):
                 if day != 0:
-                    date_str = f"{self.current_year}-{self.current_month:02d}-{day:02d}"
-                    btn = tk.Button(
-                        self.calendar_frame,
-                        text=str(day),
-                        width=8,
-                        height=3,
-                        relief="groove",
-                        bg="white",
-                        command=lambda d=date_str: self.open_day(d)
-                    )
+                    dateStr = f"{year}-{month:02d}-{day:02d}"
+                    today = datetime.now().date()
+                    cellDate = datetime(year, month, day).date()
+
+                    # Default color
+                    dayBg = "white"
 
                     # Highlight today
-                    if date_str == self.today:
-                        btn.config(bg="#4CAF50", fg="white")
+                    if cellDate == today:
+                        dayBg = "#90EE90"  # light green
 
-                    # Weekends in light blue
-                    if col == 5 or col == 6:
-                        btn.config(bg="#e3f2fd")
+                    # Highlight weekends
+                    elif col in (5, 6):
+                        dayBg = "#ADD8E6"  # light blue
 
-                    btn.grid(row=row, column=col, padx=3, pady=3)
+                    # Create frame with highlight color
+                    frame = tk.Frame(self.calendarFrame, relief="ridge", bd=1, bg=dayBg)
+                    frame.grid(row=row, column=col, sticky="nsew", padx=1, pady=1)
 
-    def open_day(self, date_str):
-        top = Toplevel(self.root)
-        top.title(f"Events on {date_str}")
-        top.geometry("350x350")
+                    # Day number
+                    tk.Label(frame, text=str(day), anchor="nw", bg=dayBg).pack(fill="x")
 
-        tk.Label(top, text=f"Events on {date_str}", font=("Arial", 12, "bold")).pack(pady=10)
+                    # Event preview
+                    for ev in self.events.get(dateStr, []):
+                        tk.Label(frame, text=f"{ev['time']} {ev['title']}",
+                                 bg=self.categoryColors[ev["category"]], fg="white",
+                                 font=("Segoe UI", 9), anchor="w").pack(fill="x", padx=2, pady=1)
 
-        events = self.events.get(date_str, [])
-        listbox = tk.Listbox(top, width=45, height=12)
-        listbox.pack(pady=10)
-        for ev in events:
-            listbox.insert(tk.END, f"{ev['title']} [{ev['category']}]")
+                    # Click to add/edit events
+                    frame.bind("<Button-1>", lambda e, d=dateStr: self.openEventForm(d))
 
-        def add_event():
-            title = simpledialog.askstring("Add Event", "Enter event title:")
-            category = simpledialog.askstring("Category", "Enter category (Class, Meeting, etc):")
-            if title:
-                self.events.setdefault(date_str, []).append({"title": title, "category": category or "General"})
-                listbox.insert(tk.END, f"{title} [{category}]")
-                self.update_upcoming_events()
+        # Expand grid
+        for i in range(7):
+            self.calendarFrame.grid_columnconfigure(i, weight=1)
+        for i in range(len(monthCalendar) + 2):
+            self.calendarFrame.grid_rowconfigure(i, weight=1)
 
-        def delete_event():
-            selection = listbox.curselection()
-            if selection:
-                idx = selection[0]
-                del self.events[date_str][idx]
-                listbox.delete(idx)
-                self.update_upcoming_events()
+    # Event form
+    def openEventForm(self, dateStr=None):
+        form = tk.Toplevel(self.root)
+        form.title("➕ Add Event")
+        form.geometry("300x300")
+        form.configure(bg="#f8f9fa")
 
-        tk.Button(top, text="Add Event", command=add_event, bg="#4CAF50", fg="white").pack(side="left", padx=20, pady=10)
-        tk.Button(top, text="Delete Event", command=delete_event, bg="#f44336", fg="white").pack(side="right", padx=20, pady=10)
+        tk.Label(form, text="Title:", bg="#f8f9fa").pack(pady=5)
+        titleEntry = tk.Entry(form, width=25)
+        titleEntry.pack()
 
-    def update_upcoming_events(self):
-        self.upcoming_list.delete(0, tk.END)
-        all_events = []
-        for date, items in self.events.items():
-            for ev in items:
-                all_events.append((date, ev["title"], ev["category"]))
+        tk.Label(form, text="Category:", bg="#f8f9fa").pack(pady=5)
+        categoryVar = tk.StringVar(value="Assignment")
+        tk.OptionMenu(form, categoryVar, *self.categoryColors.keys()).pack()
 
-        all_events.sort(key=lambda x: x[0])
-        for d, title, cat in all_events[:5]:  # Show only next 5
-            self.upcoming_list.insert(tk.END, f"{d}: {title} [{cat}]")
+        tk.Label(form, text="Time (HH:MM):", bg="#f8f9fa").pack(pady=5)
+        timeEntry = tk.Entry(form, width=25)
+        timeEntry.pack()
 
-    def jump_to_date(self):
-        year = simpledialog.askinteger("Jump to Date", "Enter year (YYYY):")
-        month = simpledialog.askinteger("Jump to Date", "Enter month (1-12):")
-        if year and month and 1 <= month <= 12:
-            self.current_year = year
-            self.current_month = month
-            self.draw_calendar()
+        # Save button
+        def saveEvent():
+            title = titleEntry.get().strip()
+            category = categoryVar.get()
+            timeStr = timeEntry.get().strip()
 
-    def prev_month(self):
-        self.current_month -= 1
-        if self.current_month == 0:
-            self.current_month = 12
-            self.current_year -= 1
-        self.draw_calendar()
+            # Validate Title
+            if not title:
+                messagebox.showerror("Error", "Title cannot be empty!")
+                return
+            if any(char.isdigit() or not char.isalnum() and char != " " for char in title):
+                messagebox.showerror("Error", "Title cannot contain numbers or symbols!")
+                return
 
-    def next_month(self):
-        self.current_month += 1
-        if self.current_month == 13:
-            self.current_month = 1
-            self.current_year += 1
-        self.draw_calendar()
+            # Validate Time
+            try:
+                datetime.strptime(timeStr, "%H:%M")
+                hour, minute = map(int, timeStr.split(":"))
+                if not (0 <= hour < 24 and 0 <= minute < 60):
+                    raise ValueError
+            except:
+                messagebox.showerror("Error", "Invalid time format! Use HH:MM (24-hour).")
+                return
 
-# Run App
+            if dateStr not in self.events:
+                self.events[dateStr] = []
+            self.events[dateStr].append({"title": title, "category": category, "time": timeStr})
+
+            self.saveEvents()
+            self.drawCalendar()
+            form.destroy()
+
+        tk.Button(form, text="Save Event", command=saveEvent, bg="#28a745", fg="white").pack(pady=20)
+
+    # Delete Event
+    def deleteEvent(self):
+        if not self.events:
+            messagebox.showinfo("Info", "No events to delete.")
+            return
+
+        form = tk.Toplevel(self.root)
+        form.title("❌ Delete Event")
+        form.geometry("350x250")
+        form.configure(bg="#f8f9fa")
+
+        tk.Label(form, text="Select date to delete from:", bg="#f8f9fa").pack(pady=5)
+        dateVar = tk.StringVar(value=list(self.events.keys())[0])
+        tk.OptionMenu(form, dateVar, *self.events.keys()).pack()
+
+        def deleteSelected():
+            selectedDate = dateVar.get()
+            if selectedDate in self.events:
+                del self.events[selectedDate]
+                self.saveEvents()
+                self.drawCalendar()
+            form.destroy()
+
+        tk.Button(form, text="Delete", command=deleteSelected, bg="#dc3545", fg="white").pack(pady=20)
+
+
+# Run app
 if __name__ == "__main__":
     root = tk.Tk()
     app = CalendarApp(root)
