@@ -13,6 +13,7 @@ class Homework:
 
     def to_dict(self):
         return {
+            'type': 'Homework',
             'subject': self.subject,
             'title': self.title,
             'description': self.description,
@@ -22,7 +23,27 @@ class Homework:
 
     @staticmethod
     def from_dict(d):
+        if d.get('type') == 'TimedHomework':
+            return TimedHomework.from_dict(d)
         return Homework(d['subject'], d['title'], d['description'], d['due_date'], d['status'])
+
+# Inheritance: TimedHomework subclass
+class TimedHomework(Homework):
+    def __init__(self, subject, title, description, due_date, status, time_required):
+        super().__init__(subject, title, description, due_date, status)
+        self.time_required = time_required  # in minutes
+
+    def to_dict(self):
+        d = super().to_dict()
+        d['type'] = 'TimedHomework'
+        d['time_required'] = self.time_required
+        return d
+
+    @staticmethod
+    def from_dict(d):
+        return TimedHomework(
+            d['subject'], d['title'], d['description'], d['due_date'], d['status'], d.get('time_required', 0)
+        )
 from datetime import datetime
 import json
 import os
@@ -49,10 +70,13 @@ def refresh_homework(tree, filter_text=""):
             filter_text in hw.status.lower()
         ):
             checked = '☑' if idx in checked_rows else '☐'
-            tree.insert('', 'end', iid=idx, values=(checked, hw.subject, hw.title, hw.due_date, hw.status))
+            time_required = ''
+            if isinstance(hw, TimedHomework):
+                time_required = str(hw.time_required)
+            tree.insert('', 'end', iid=idx, values=(checked, hw.subject, hw.title, hw.due_date, hw.status, time_required))
 
 # Function to add homework
-def add_homework(subject, title, description, due_entry, status, tree, add_win):
+def add_homework(subject, title, description, due_entry, status, tree, add_win, is_timed=False, time_required_entry=None):
     due_date = due_entry.get()
     if not subject or not title or not due_date:
         messagebox.showwarning("Input Error", "Subject, Title, and Due Date are required.")
@@ -62,7 +86,15 @@ def add_homework(subject, title, description, due_entry, status, tree, add_win):
     except ValueError:
         messagebox.showwarning("Input Error", "Due Date must be in YYYY-MM-DD format.")
         return
-    homework_list.append(Homework(subject, title, description, due_date, status))
+    if is_timed and time_required_entry is not None:
+        try:
+            time_required = int(time_required_entry.get())
+        except ValueError:
+            messagebox.showwarning("Input Error", "Time Required must be an integer (minutes).")
+            return
+        homework_list.append(TimedHomework(subject, title, description, due_date, status, time_required))
+    else:
+        homework_list.append(Homework(subject, title, description, due_date, status))
     save_homework_data()  # Save data after adding
     refresh_homework(tree)
     add_win.destroy()
@@ -104,7 +136,7 @@ def delete_homework(tree):
 def open_add_homework(tree):
     add_win = tk.Toplevel()
     add_win.title("Add Homework")
-    add_win.geometry("350x300")
+    add_win.geometry("350x420")  # Increased height for better visibility
 
     tk.Label(add_win, text="Subject:").pack(anchor='w', padx=10, pady=(10,0))
     subject_entry = tk.Entry(add_win)
@@ -127,8 +159,26 @@ def open_add_homework(tree):
     status_menu = ttk.Combobox(add_win, textvariable=status_var, values=["Pending", "Completed"], state="readonly")
     status_menu.pack(fill='x', padx=10)
 
+    # Option to add TimedHomework
+    is_timed_var = tk.BooleanVar()
+    timed_frame = tk.Frame(add_win)
+    timed_frame.pack(fill='x', padx=10, pady=(10,0))
+    tk.Checkbutton(timed_frame, text="Timed Homework (add time required)", variable=is_timed_var).pack(anchor='w')
+    time_required_label = tk.Label(add_win, text="Time Required (minutes):")
+    # Use Spinbox for user-friendly time input
+    time_required_entry = tk.Spinbox(add_win, from_=1, to=1440, width=10)
+
+    def toggle_timed():
+        if is_timed_var.get():
+            time_required_label.pack(anchor='w', padx=10, pady=(10,0))
+            time_required_entry.pack(fill='x', padx=10)
+        else:
+            time_required_label.pack_forget()
+            time_required_entry.pack_forget()
+    is_timed_var.trace_add('write', lambda *args: toggle_timed())
+
     tk.Button(add_win, text="Add Homework", command=lambda: add_homework(
-        subject_entry.get(), title_entry.get(), desc_entry.get(), due_entry, status_var.get(), tree, add_win)).pack(pady=15)
+        subject_entry.get(), title_entry.get(), desc_entry.get(), due_entry, status_var.get(), tree, add_win, is_timed_var.get(), time_required_entry if is_timed_var.get() else None)).pack(pady=15)
 
 # Function to open the edit homework window
 def open_edit_homework(tree):
@@ -205,7 +255,7 @@ def open_homework_planner_window():
     
     hw_win = tk.Toplevel()
     hw_win.title("Homework Planner")
-    hw_win.geometry("600x450")
+    hw_win.geometry("800x450")  # Increased width for better column visibility
 
     tk.Label(hw_win, text="Homework Planner", font=("Segoe UI", 16, "bold")).pack(pady=10)
 
@@ -218,13 +268,20 @@ def open_homework_planner_window():
     search_entry.pack(side='left', fill='x', expand=True, padx=(5, 0))
 
 
-    columns = ("Select", "Subject", "Title", "Due Date", "Status")
+    columns = ("Select", "Subject", "Title", "Due Date", "Status", "Time Required")
     tree = ttk.Treeview(hw_win, columns=columns, show='headings', selectmode='none')
     tree.heading("Select", text="☐", anchor='center')
     tree.column("Select", width=40, anchor='center', stretch=False)
-    for col in columns[1:]:
-        tree.heading(col, text=col)
-        tree.column(col, width=120)
+    tree.heading("Subject", text="Subject")
+    tree.column("Subject", width=120, anchor='center')
+    tree.heading("Title", text="Title")
+    tree.column("Title", width=180, anchor='center')
+    tree.heading("Due Date", text="Due Date")
+    tree.column("Due Date", width=110, anchor='center')
+    tree.heading("Status", text="Status")
+    tree.column("Status", width=100, anchor='center')
+    tree.heading("Time Required", text="Time Required (min)")
+    tree.column("Time Required", width=130, anchor='center')
     tree.pack(fill='both', expand=True, padx=10, pady=10)
 
     # Add click event to toggle checkbox
