@@ -24,6 +24,48 @@ class Timer:
 
     def reset(self):
         self.remaining_time = self.duration
+
+class ToolTip:
+    def __init__(self, widget, text, delay=500):
+        self.widget = widget
+        self.text = text
+        self.delay = delay  # milliseconds before showing
+        self.tip_window = None
+        self.id = None
+        self.widget.bind("<Enter>", self.schedule)
+        self.widget.bind("<Leave>", self.hide_tip)
+
+    def schedule(self, event=None):
+        self.unschedule()
+        self.id = self.widget.after(self.delay, self.show_tip)
+
+    def unschedule(self):
+        if self.id:
+            self.widget.after_cancel(self.id)
+            self.id = None
+
+    def show_tip(self):
+        if self.tip_window or not self.text:
+            return
+    
+        # Position tooltip relative to the widget
+        x = self.widget.winfo_rootx() + 20
+        y = self.widget.winfo_rooty() - 20 
+
+        self.tip_window = tw = tk.Toplevel(self.widget)
+        tw.wm_overrideredirect(True)  # Remove window decorations
+        tw.wm_geometry(f"+{x}+{y}")
+        label = tk.Label(tw, text=self.text, justify='left',
+                        background="#ffffe0", relief='solid', borderwidth=1,
+                        font=("Arial", 9))
+        label.pack(ipadx=5, ipady=3)
+
+        self.widget.after(5000, self.hide_tip)
+
+    def hide_tip(self, event=None):
+        if self.tip_window:
+            self.tip_window.destroy()
+            self.tip_window = None
     
 class PomodoroTimer(Timer):
     def __init__(self, root):
@@ -123,18 +165,12 @@ class PomodoroTimer(Timer):
         ttk.Button(btn_frame, text="Add Task", command=self.add_task).grid(row=0, column=0, padx=5)
         ttk.Button(btn_frame, text="Delete Task", command=self.delete_task).grid(row=0, column=1, padx=5)
         ttk.Button(btn_frame, text="Clear Tasks", command=self.clear_tasks).grid(row=0, column=2, padx=5)
-        self.task_hint = tk.Label(task_frame,
-                          text="💡 Select a task from the list before pressing Delete",
-                          font=('Arial', 10), fg="gray", bg='#f5f5f5')
-        self.task_hint.pack(pady=5)
+        ToolTip(self.task_listbox, "💡 Select a task from the list before pressing Delete")
 
          # Mark Complete button (only visible during long breaks)
         self.mark_complete_button = ttk.Button(btn_frame, text="Mark Complete", command=self.mark_task_complete)
         self.mark_complete_button.grid(row=1, column=0, columnspan=3, pady=5)
         self.mark_complete_button.grid_remove() 
-
-        # Destroy hint after 5 seconds
-        self.root.after(5000, self.task_hint.destroy)
         
         # Display cat image
         self.cat_canvas = tk.Canvas(self.middle_frame, width=200, height=200, bg='#f5f5f5', highlightthickness=0)
@@ -183,24 +219,32 @@ class PomodoroTimer(Timer):
         save_button = ttk.Button(settings_frame, text="Save Settings", command=self.save_timer_settings)
         save_button.grid(row=3, columnspan=2, pady=5)
 
-        # Coin display
+       # Coin, Cat Shop, and Sound Settings area
         coin_frame = tk.Frame(self.root, bg='#f5f5f5')
-        coin_frame.pack(pady=10)
+        coin_frame.pack(pady=10, fill=tk.X)
 
+        # Coins label
         self.coin_label = tk.Label(coin_frame, text=f"Coins: {self.coins}", font=('Arial', 14), bg='#f5f5f5')
-        self.coin_label.pack(side=tk.LEFT, padx=10)
+        self.coin_label.grid(row=0, column=0, padx=10, sticky='w')
 
+        # Cat Shop button
         shop_button = ttk.Button(coin_frame, text="Cat Shop", command=self.open_cat_shop)
-        shop_button.pack(side=tk.LEFT)
+        shop_button.grid(row=0, column=1, padx=5, sticky='w')
 
+        # Sound Settings button
         sound_button = ttk.Button(coin_frame, text="Sound Settings", command=self.open_sound_settings)
-        sound_button.pack(side=tk.LEFT, padx=5)
+        sound_button.grid(row=0, column=2, padx=5, sticky='w')
 
-        self.pomodoro_label = tk.Label(coin_frame, text=f"Completed Pomodoros: {self.pomodoro_count}", font=('Arial', 14), bg='#f5f5f5')
-        self.pomodoro_label.pack(side=tk.RIGHT, padx=10)
+        # Completed Pomodoros label (right-aligned)
+        self.pomodoro_label = tk.Label(coin_frame, text=f"Completed Pomodoros: {self.pomodoro_count}",
+                            font=('Arial', 14), bg='#f5f5f5')
+        self.pomodoro_label.grid(row=0, column=3, padx=10, sticky='e')
 
-        sound_frame = tk.Frame(self.root, bg='#f5f5f5')
-        sound_frame.pack(pady=10)
+        # Make columns expand nicely if window resized
+        coin_frame.grid_columnconfigure(0, weight=1)
+        coin_frame.grid_columnconfigure(1, weight=0)
+        coin_frame.grid_columnconfigure(2, weight=0)
+        coin_frame.grid_columnconfigure(3, weight=1)
         
 
     def update_cycle_display(self):
