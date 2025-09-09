@@ -27,14 +27,9 @@ def open_calendar_app():
     CalendarApp(calendar_window)  # attach the calendar to this window
     
 def open_pomodoro_timer():
-    # Create a new top-level window for the Pomodoro Timer
     pomo_window = tk.Toplevel(root)
     pomo_window.title("Pomodoro Timer")
-    pomo_window.geometry("800x600")  # Match the size from pomodoro_timer.py
-    pomo_window.configure(bg='#f5f5f5')  # Match the background color
-    
-    # Initialize the Pomodoro Timer
-    PomodoroTimer(pomo_window)  # This will create the timer in the new window
+    PomodoroTimer(pomo_window)
 
 root = tk.Tk()
 root.title("TAR UMT Student Assistant App")
