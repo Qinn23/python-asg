@@ -193,27 +193,15 @@ class PomodoroTimer(Timer):
         shop_button = ttk.Button(coin_frame, text="Cat Shop", command=self.open_cat_shop)
         shop_button.pack(side=tk.LEFT)
 
+        sound_button = ttk.Button(coin_frame, text="Sound Settings", command=self.open_sound_settings)
+        sound_button.pack(side=tk.LEFT, padx=5)
+
         self.pomodoro_label = tk.Label(coin_frame, text=f"Completed Pomodoros: {self.pomodoro_count}", font=('Arial', 14), bg='#f5f5f5')
         self.pomodoro_label.pack(side=tk.RIGHT, padx=10)
 
-        # Sound buttons
         sound_frame = tk.Frame(self.root, bg='#f5f5f5')
         sound_frame.pack(pady=10)
-
-        for i in range(4):
-            sound_frame.grid_columnconfigure(i, weight=1)
-
-            ttk.Button(sound_frame, text="Set Focus Sound",
-                command=lambda: self.set_sound('focus_sound')).grid(row=0, column=0, padx=5, pady=5, sticky="ew")
-
-            ttk.Button(sound_frame, text="Set Break Sound",
-                command=lambda: self.set_sound('break_sound')).grid(row=0, column=1, padx=5, pady=5, sticky="ew")
-
-            ttk.Button(sound_frame, text="Set Completion Sound",
-                command=lambda: self.set_sound('task_complete_sound')).grid(row=0, column=2, padx=5, pady=5, sticky="ew")
-
-            ttk.Button(sound_frame, text="Connect to Music App",
-                command=self.connect_music_app).grid(row=0, column=3, padx=5, pady=5, sticky="ew")
+        
 
     def update_cycle_display(self):
         if self.is_focus:
@@ -582,6 +570,29 @@ class PomodoroTimer(Timer):
             self.root.after(3000, lambda: self.set_cat_state("normal" if not self.is_focus else "sleeping"))
         else:
             messagebox.showerror("Not Enough Coins", "You don't have enough coins to buy this item!")
+
+    def open_sound_settings(self):
+        sound_window = tk.Toplevel(self.root)
+        sound_window.title("Sound Settings")
+        sound_window.geometry("400x200")
+        sound_window.configure(bg='#f5f5f5')
+
+        tk.Label(sound_window, text="Sound Settings", font=('Arial', 16, 'bold'), bg='#f5f5f5').pack(pady=10)
+
+        # Focus sound
+        ttk.Button(sound_window, text=f"Set Focus Sound",
+               command=lambda: self.set_sound('focus_sound')).pack(pady=5)
+
+        # Break sound
+        ttk.Button(sound_window, text=f"Set Break Sound",
+               command=lambda: self.set_sound('break_sound')).pack(pady=5)
+
+        # Completion/long break sound
+        ttk.Button(sound_window, text=f"Set Completion Sound ",
+               command=lambda: self.set_sound('task_complete_sound')).pack(pady=5)
+
+        # Connect to Music App
+        ttk.Button(sound_window, text="Connect to Music App", command=self.connect_music_app).pack(pady=10)
 
 
 if __name__ == "__main__":
