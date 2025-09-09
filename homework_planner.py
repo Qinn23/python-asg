@@ -110,7 +110,17 @@ def edit_homework(idx, subject, title, description, due_entry, status, tree, edi
     except ValueError:
         messagebox.showwarning("Input Error", "Due Date must be in YYYY-MM-DD format.")
         return
-    homework_list[idx] = Homework(subject, title, description, due_date, status)
+    # Check if user wants TimedHomework
+    is_timed = getattr(edit_win, 'is_timed_var', None)
+    if is_timed and is_timed.get():
+        try:
+            time_required = int(edit_win.time_required_entry.get())
+        except ValueError:
+            messagebox.showwarning("Input Error", "Time Required must be an integer (minutes).")
+            return
+        homework_list[idx] = TimedHomework(subject, title, description, due_date, status, time_required)
+    else:
+        homework_list[idx] = Homework(subject, title, description, due_date, status)
     save_homework_data()  # Save data after editing
     refresh_homework(tree)
     edit_win.destroy()
@@ -191,7 +201,7 @@ def open_edit_homework(tree):
 
     edit_win = tk.Toplevel()
     edit_win.title("Edit Homework")
-    edit_win.geometry("350x300")
+    edit_win.geometry("350x400")
 
     tk.Label(edit_win, text="Subject:").pack(anchor='w', padx=10, pady=(10,0))
     subject_entry = tk.Entry(edit_win)
@@ -217,6 +227,37 @@ def open_edit_homework(tree):
     status_var = tk.StringVar(value=hw.status)
     status_menu = ttk.Combobox(edit_win, textvariable=status_var, values=["Pending", "Completed"], state="readonly")
     status_menu.pack(fill='x', padx=10)
+
+    # Checkbox to enable/disable TimedHomework
+    is_timed_var = tk.BooleanVar(value=isinstance(hw, TimedHomework))
+    timed_frame = tk.Frame(edit_win)
+    timed_frame.pack(fill='x', padx=10, pady=(10,0))
+    tk.Checkbutton(timed_frame, text="Timed Homework (add time required)", variable=is_timed_var).pack(anchor='w')
+    time_required_label = tk.Label(edit_win, text="Time Required (minutes):")
+    time_required_entry = tk.Spinbox(edit_win, from_=1, to=1440, width=10)
+    if isinstance(hw, TimedHomework):
+        time_required_entry.delete(0, 'end')
+        time_required_entry.insert(0, hw.time_required)
+    else:
+        time_required_entry.delete(0, 'end')
+        time_required_entry.insert(0, 30)
+
+    def toggle_timed():
+        if is_timed_var.get():
+            time_required_label.pack(anchor='w', padx=10, pady=(10,0))
+            time_required_entry.pack(fill='x', padx=10)
+        else:
+            time_required_label.pack_forget()
+            time_required_entry.pack_forget()
+    is_timed_var.trace_add('write', lambda *args: toggle_timed())
+    # Initial state
+    if is_timed_var.get():
+        time_required_label.pack(anchor='w', padx=10, pady=(10,0))
+        time_required_entry.pack(fill='x', padx=10)
+
+    # Attach toplevel attributes for access in edit_homework
+    edit_win.is_timed_var = is_timed_var
+    edit_win.time_required_entry = time_required_entry
 
     tk.Button(edit_win, text="Save Changes", command=lambda: edit_homework(
         idx, subject_entry.get(), title_entry.get(), desc_entry.get(), due_entry, status_var.get(), tree, edit_win)).pack(pady=15)
