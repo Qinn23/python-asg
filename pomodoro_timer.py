@@ -200,10 +200,20 @@ class PomodoroTimer(Timer):
         sound_frame = tk.Frame(self.root, bg='#f5f5f5')
         sound_frame.pack(pady=10)
 
-        ttk.Button(sound_frame, text="Set Focus Sound", command=lambda: self.set_sound('focus_sound')).grid(row=0, column=0, padx=5)
-        ttk.Button(sound_frame, text="Set Break Sound", command=lambda: self.set_sound('break_sound')).grid(row=0, column=1, padx=5)
-        ttk.Button(sound_frame, text="Set Completion Sound", command=lambda: self.set_sound('task_complete_sound')).grid(row=0, column=2, padx=5)
-        ttk.Button(sound_frame, text="Connect to Music App", command=self.connect_music_app).grid(row=0, column=3, padx=5)
+        for i in range(4):
+            sound_frame.grid_columnconfigure(i, weight=1)
+
+            ttk.Button(sound_frame, text="Set Focus Sound",
+                command=lambda: self.set_sound('focus_sound')).grid(row=0, column=0, padx=5, pady=5, sticky="ew")
+
+            ttk.Button(sound_frame, text="Set Break Sound",
+                command=lambda: self.set_sound('break_sound')).grid(row=0, column=1, padx=5, pady=5, sticky="ew")
+
+            ttk.Button(sound_frame, text="Set Completion Sound",
+                command=lambda: self.set_sound('task_complete_sound')).grid(row=0, column=2, padx=5, pady=5, sticky="ew")
+
+            ttk.Button(sound_frame, text="Connect to Music App",
+                command=self.connect_music_app).grid(row=0, column=3, padx=5, pady=5, sticky="ew")
 
     def update_cycle_display(self):
         if self.is_focus:
@@ -412,7 +422,7 @@ class PomodoroTimer(Timer):
         self.pause_button.config(state=tk.DISABLED)
 
     def complete_focus_session(self):
-        # Increment total Pomodoro count only (NOT the cycle count!)
+        # Increment total Pomodoro count only
         self.pomodoro_count += 1
         self.pomodoro_label.config(text=f"Completed Pomodoros: {self.pomodoro_count}")
 
