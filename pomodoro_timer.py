@@ -235,11 +235,6 @@ class PomodoroTimer(Timer):
         sound_button = ttk.Button(coin_frame, text="Sound Settings", command=self.open_sound_settings)
         sound_button.grid(row=0, column=2, padx=5, sticky='w')
 
-        # Completed Pomodoros label (right-aligned)
-        self.pomodoro_label = tk.Label(coin_frame, text=f"Completed Pomodoros: {self.pomodoro_count}",
-                            font=('Arial', 14), bg='#f5f5f5')
-        self.pomodoro_label.grid(row=0, column=3, padx=10, sticky='e')
-
         # Make columns expand nicely if window resized
         coin_frame.grid_columnconfigure(0, weight=1)
         coin_frame.grid_columnconfigure(1, weight=0)
