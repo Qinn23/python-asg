@@ -434,7 +434,6 @@ class PomodoroTimer(Timer):
     def complete_focus_session(self):
         # Increment total Pomodoro count only
         self.pomodoro_count += 1
-        self.pomodoro_label.config(text=f"Completed Pomodoros: {self.pomodoro_count}")
 
         # Award coins
         coins_earned = random.randint(1, 3)
