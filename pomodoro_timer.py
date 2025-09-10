@@ -72,6 +72,7 @@ class PomodoroTimer(Timer):
         self.root = root
         self.root.title("Purr-odoro Timer")
         self.root.configure(bg='#f5f5f5')
+        self.center_window(800, 600)
 
         # Load settings or create default
         self.load_settings()
@@ -167,7 +168,7 @@ class PomodoroTimer(Timer):
         ttk.Button(btn_frame, text="Clear Tasks", command=self.clear_tasks).grid(row=0, column=2, padx=5)
         ToolTip(self.task_listbox, "💡 Select a task from the list before pressing Delete")
 
-         # Mark Complete button (only visible during long breaks)
+        # Mark Complete button (only visible during long breaks)
         self.mark_complete_button = ttk.Button(btn_frame, text="Mark Complete", command=self.mark_task_complete)
         self.mark_complete_button.grid(row=1, column=0, columnspan=3, pady=5)
         self.mark_complete_button.grid_remove() 
@@ -197,28 +198,6 @@ class PomodoroTimer(Timer):
         self.reset_button = ttk.Button(self.bottom_frame, text="Reset timer", command=self.reset_timer)
         self.reset_button.grid(row=0, column=3, padx=10)
 
-        # Settings area
-        settings_frame = tk.Frame(self.root, bg='#f5f5f5')
-        settings_frame.pack(pady=20)
-
-        tk.Label(settings_frame, text="Focus Time (min):", bg='#f5f5f5').grid(row=0, column=0, padx=5, pady=5)
-        self.focus_entry = ttk.Entry(settings_frame, width=5)
-        self.focus_entry.insert(0, str(self.settings['focus_time']))
-        self.focus_entry.grid(row=0, column=1, padx=5, pady=5)
-
-        tk.Label(settings_frame, text="Break Time (min):", bg='#f5f5f5').grid(row=1, column=0, padx=5, pady=5)
-        self.break_entry = ttk.Entry(settings_frame, width=5)
-        self.break_entry.insert(0, str(self.settings['break_time']))
-        self.break_entry.grid(row=1, column=1, padx=5, pady=5)
-
-        tk.Label(settings_frame, text="Long Break (min):", bg='#f5f5f5').grid(row=2, column=0, padx=5, pady=5)
-        self.long_break_entry = ttk.Entry(settings_frame, width=5)
-        self.long_break_entry.insert(0, str(self.settings['long_break_time']))
-        self.long_break_entry.grid(row=2, column=1, padx=5, pady=5)
-
-        save_button = ttk.Button(settings_frame, text="Save Settings", command=self.save_timer_settings)
-        save_button.grid(row=3, columnspan=2, pady=5)
-
        # Coin, Cat Shop, and Sound Settings area
         coin_frame = tk.Frame(self.root, bg='#f5f5f5')
         coin_frame.pack(pady=10, fill=tk.X)
@@ -234,6 +213,10 @@ class PomodoroTimer(Timer):
         # Sound Settings button
         sound_button = ttk.Button(coin_frame, text="Sound Settings", command=self.open_sound_settings)
         sound_button.grid(row=0, column=2, padx=5, sticky='w')
+
+        # Timer Settings button
+        timer_button = ttk.Button(coin_frame, text="Timer Settings", command=self.open_timer_settings)
+        timer_button.grid(row=0, column=3, padx=5, sticky='w')
 
         # Make columns expand nicely if window resized
         coin_frame.grid_columnconfigure(0, weight=1)
@@ -632,6 +615,65 @@ class PomodoroTimer(Timer):
 
         # Connect to Music App
         ttk.Button(sound_window, text="Connect to Music App", command=self.connect_music_app).pack(pady=10)
+
+    def open_timer_settings(self):
+        settings_window = tk.Toplevel(self.root)
+        settings_window.title("Timer Settings")
+        settings_window.geometry("400x250")
+        settings_window.configure(bg='#f5f5f5')
+
+        tk.Label(settings_window, text="Timer Settings", font=('Arial', 16, 'bold'), bg='#f5f5f5').pack(pady=10)
+
+        frame = tk.Frame(settings_window, bg='#f5f5f5')
+        frame.pack(pady=10)
+
+        # Focus Time
+        tk.Label(frame, text="Focus Time (min):", bg='#f5f5f5').grid(row=0, column=0, padx=5, pady=5, sticky="w")
+        focus_entry = ttk.Entry(frame, width=5)
+        focus_entry.insert(0, str(self.settings['focus_time']))
+        focus_entry.grid(row=0, column=1, padx=5, pady=5)
+
+        # Break Time
+        tk.Label(frame, text="Break Time (min):", bg='#f5f5f5').grid(row=1, column=0, padx=5, pady=5, sticky="w")
+        break_entry = ttk.Entry(frame, width=5)
+        break_entry.insert(0, str(self.settings['break_time']))
+        break_entry.grid(row=1, column=1, padx=5, pady=5)
+
+        # Long Break Time
+        tk.Label(frame, text="Long Break (min):", bg='#f5f5f5').grid(row=2, column=0, padx=5, pady=5, sticky="w")
+        long_break_entry = ttk.Entry(frame, width=5)
+        long_break_entry.insert(0, str(self.settings['long_break_time']))
+        long_break_entry.grid(row=2, column=1, padx=5, pady=5)
+
+        def save_and_close():
+            try:
+                focus_time = int(focus_entry.get())
+                break_time = int(break_entry.get())
+                long_break = int(long_break_entry.get())
+
+                if focus_time < 1 or break_time < 1 or long_break < 1:
+                    raise ValueError("Times must be at least 1 minute")
+
+                self.settings['focus_time'] = focus_time
+                self.settings['break_time'] = break_time
+                self.settings['long_break_time'] = long_break
+
+                self.save_settings()
+                self.is_focus = True
+                self.reset_timer()
+                messagebox.showinfo("Settings Saved", "Timer settings updated successfully!")
+                settings_window.destroy()
+            except Exception as e:
+                messagebox.showerror("Invalid Input", str(e))
+
+        ttk.Button(settings_window, text="Save Settings", command=save_and_close).pack(pady=15)
+
+    def center_window(self, width, height):
+        screen_width = self.root.winfo_screenwidth()
+        screen_height = self.root.winfo_screenheight()
+        x = (screen_width // 2) - (width // 2)
+        y = (screen_height // 2) - (height // 2)
+        self.root.geometry(f"{width}x{height}+{x}+{y}")
 
 
 if __name__ == "__main__":
