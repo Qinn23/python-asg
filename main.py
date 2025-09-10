@@ -1,5 +1,5 @@
 import tkinter as tk
-from homework_planner import open_homework_planner_window
+from homework_planner import HomeworkPlannerApp
 from pomodoro_timer import PomodoroTimer  # Import the PomodoroTimer class
 from calandar_timetable import CalendarApp
 
@@ -18,7 +18,8 @@ def on_leave(e):
     e.widget['background'] = BTN_COLOR
 
 def open_homework_planner():
-    open_homework_planner_window()
+    app = HomeworkPlannerApp(root)
+    app.open_homework_planner_window()
 
 def open_calendar_app():
     calendar_window = tk.Toplevel(root)
