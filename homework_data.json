@@ -1,5 +1,6 @@
 [
   {
+    "type": "Homework",
     "subject": "english",
     "title": "demon slayer",
     "description": "",
@@ -7,6 +8,7 @@
     "status": "Pending"
   },
   {
+    "type": "Homework",
     "subject": "japanese",
     "title": "tanjiro",
     "description": "go to hell muzan haha",
@@ -14,10 +16,20 @@
     "status": "Completed"
   },
   {
+    "type": "Homework",
     "subject": "japanese",
     "title": "infinity castle",
     "description": "muzan",
     "due_date": "2025-08-14",
     "status": "Completed"
+  },
+  {
+    "type": "TimedHomework",
+    "subject": "akaza",
+    "title": "upper rank 3",
+    "description": "",
+    "due_date": "2025-08-18",
+    "status": "Pending",
+    "time_required": 30
   }
 ]
