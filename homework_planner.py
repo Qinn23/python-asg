@@ -1,8 +1,10 @@
 import json
 import os
-
 import tkinter as tk
 from tkinter import ttk, messagebox
+import tkinter as tk
+from tkinter import ttk, messagebox
+from tkinter.font import Font
 
 class Homework:
 	def __init__(self, subject, title, description, due_date, status):
@@ -126,14 +128,40 @@ class HomeworkPlannerApp:
 
 		self.refresh_homework(tree)
 
-		btn_frame = tk.Frame(hw_win)
+		btn_frame = tk.Frame(hw_win, bg="#f5f6fa")
 		btn_frame.pack(pady=10)
-		tk.Button(btn_frame, text="Add Homework", command=lambda: self.open_add_homework(tree)).pack(side='left', padx=5)
-		tk.Button(btn_frame, text="Edit Homework", command=lambda: self.open_edit_homework(tree)).pack(side='left', padx=5)
-		tk.Button(btn_frame, text="Delete Homework", command=lambda: self.delete_homework(tree)).pack(side='left', padx=5)
-		tk.Button(btn_frame, text="Save Data", command=lambda: self.save_homework_data() and messagebox.showinfo("Success", "Homework data saved successfully!")).pack(side='left', padx=5)
+
+		style = ttk.Style()
+		style.theme_use('default')
+		style.configure('Modern.TButton',
+						font=("Segoe UI", 9, "bold"),
+						foreground="#fff",
+						background="#2ce3d7",
+						borderwidth=2,
+						focusthickness=3,
+						focuscolor="#2ce3d7",
+						padding=4,
+						relief="flat",
+						bordercolor="#2ce3d7"
+		)
+		style.map('Modern.TButton',
+			background=[('active', '#0097a7'), ('!active', '#00bcd4')],
+			bordercolor=[('active', '#007c91'), ('!active', '#0097a7')],
+			relief=[('pressed', 'groove'), ('!pressed', 'flat')]
+		)
+
+		btn_add = ttk.Button(btn_frame, text="Add Homework", style='Modern.TButton', command=lambda: self.open_add_homework(tree))
+		btn_edit = ttk.Button(btn_frame, text="Edit Homework", style='Modern.TButton', command=lambda: self.open_edit_homework(tree))
+		btn_delete = ttk.Button(btn_frame, text="Delete Homework", style='Modern.TButton', command=lambda: self.delete_homework(tree))
+		btn_save = ttk.Button(btn_frame, text="Save Data", style='Modern.TButton', command=lambda: self.save_homework_data() and messagebox.showinfo("Success", "Homework data saved successfully!"))
+
+		for btn in [btn_add, btn_edit, btn_delete, btn_save]:
+			btn.pack(side='left', padx=5)
 
 	def refresh_homework(self, tree, filter_text=""):
+		# Configure tags for row colors
+		tree.tag_configure('completed', background='#b6fcb6')  # light green
+		tree.tag_configure('pending', background='#ffe066')    # golden yellow
 		for row in tree.get_children():
 			tree.delete(row)
 		filter_text = filter_text.lower()
@@ -147,7 +175,9 @@ class HomeworkPlannerApp:
 				time_required = ''
 				if isinstance(hw, TimedHomework):
 					time_required = str(hw.time_required)
-				tree.insert('', 'end', iid=idx, values=(checked, hw.subject, hw.title, hw.due_date, hw.status, time_required))
+				# Assign tag based on status
+				row_tag = 'completed' if hw.status.lower() == 'completed' else 'pending'
+				tree.insert('', 'end', iid=idx, values=(checked, hw.subject, hw.title, hw.due_date, hw.status, time_required), tags=(row_tag,))
 
 	def open_add_homework(self, tree):
 		add_win = tk.Toplevel(self.master) if self.master else tk.Toplevel()
@@ -329,7 +359,5 @@ class HomeworkPlannerApp:
 		except Exception as e:
 			print(f"Error loading homework data: {e}")
 			self.homework_list = []
-import tkinter as tk
-from tkinter import ttk, messagebox
-from tkinter.font import Font
+
 
