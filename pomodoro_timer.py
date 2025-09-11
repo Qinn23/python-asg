@@ -13,7 +13,7 @@ import pygame
 class Timer:
     def __init__(self, duration=0):
         self.duration = duration  # in seconds
-        self.remaining_time = duration
+        self._remaining_time = duration
         self.is_running = False
 
     def start(self):
@@ -23,7 +23,10 @@ class Timer:
         self.is_running = False
 
     def reset(self):
-        self.remaining_time = self.duration
+        self._remaining_time = self.duration
+
+    def remaining_time(self):
+        return self._remaining_time
 
 class ToolTip:
     def __init__(self, widget, text, delay=500):
@@ -69,6 +72,7 @@ class ToolTip:
     
 class PomodoroTimer(Timer):
     def __init__(self, root):
+        super().__init__(duration=25*60)
         self.root = root
         self.root.title("Purr-odoro Timer")
         self.root.configure(bg='#f5f5f5')
@@ -80,7 +84,7 @@ class PomodoroTimer(Timer):
         # Initialize variables
         self.is_running = False
         self.is_focus = True
-        self.remaining_time = self.settings['focus_time'] * 60
+        self._remaining_time = self.settings['focus_time'] * 60
         self.pomodoro_count = 0
         self.coins = 10  # Starting coins
         self.current_task = ""
@@ -90,7 +94,7 @@ class PomodoroTimer(Timer):
 
         self.timer_after_id = None
         self.current_duration = self.settings['focus_time'] * 60
-        self.remaining_time = self.current_duration
+        self._remaining_time = self.current_duration
 
         # Setup UI
         self.setup_ui()
@@ -139,7 +143,7 @@ class PomodoroTimer(Timer):
         self.bottom_frame.pack(pady=20)
 
         # Clock display
-        mins, secs = divmod(self.remaining_time, 60)
+        mins, secs = divmod(self._remaining_time, 60)
         self.clock_label = tk.Label(
         self.top_frame,
         text=f"{mins:02d}:{secs:02d}",
@@ -337,11 +341,14 @@ class PomodoroTimer(Timer):
             # Set current task
             self.current_task = selected_task
 
-        # --- Timer state handling ---
-        if not self.is_running:
-            self.is_running = True
-            self.start_button.config(state=tk.DISABLED)
-            self.pause_button.config(state=tk.NORMAL)
+            if self.timer_after_id:
+                self.root.after_cancel(self.timer_after_id)
+                self.timer_after_id = None
+
+            if not self.is_running:
+                super().start()  # sets self.is_running = True
+                self.start_button.config(state=tk.DISABLED)
+                self.pause_button.config(state=tk.NORMAL)
 
             # Handle sounds and cat states
             if self.is_focus:
@@ -357,15 +364,14 @@ class PomodoroTimer(Timer):
 
     def pause_timer(self):
         if self.is_running:
-            self.is_running = False
+            super().pause()
             self.start_button.config(state=tk.NORMAL)
             self.pause_button.config(state=tk.DISABLED)
             winsound.PlaySound(None, winsound.SND_PURGE)
 
     def skip_timer(self):
-        if self.is_focus:
-            selected_indices = self.task_listbox.curselection()
-        if not selected_indices:
+        selected_indices = self.task_listbox.curselection()
+        if self.is_focus and not selected_indices:
             messagebox.showwarning("No Task", "Please select or add a task first!")
             return
 
@@ -393,27 +399,34 @@ class PomodoroTimer(Timer):
         self.pause_button.config(state=tk.DISABLED)
 
     def reset_timer(self):
+        # Cancel any running timer loop
+        if self.timer_after_id:
+            self.root.after_cancel(self.timer_after_id)
+            self.timer_after_id = None
+
+        # Fully stop the timer
         self.is_running = False
-        self.start_button.config(state=tk.NORMAL)
-        self.pause_button.config(state=tk.DISABLED)
+        super().reset()
 
         # Set remaining_time based on current mode
         if self.is_focus:
-            self.remaining_time = self.settings['focus_time'] * 60
+            self._remaining_time = self.settings['focus_time'] * 60
             self.mode_label.config(text="Focus Time", fg='#d63031')
         else:
-            self.remaining_time = self.settings['break_time'] * 60
+            self._remaining_time = self.settings['break_time'] * 60
             self.mode_label.config(text="Break Time", fg='#00b894')
 
         self.update_display()
+        self.start_button.config(state=tk.NORMAL)
+        self.pause_button.config(state=tk.DISABLED)
 
     def update_timer(self):
-        if self.remaining_time > 0 and self.is_running:
-            self.remaining_time -= 1 
-            mins, secs = divmod(self.remaining_time, 60)
+        if self._remaining_time > 0 and self.is_running:
+            self._remaining_time -= 1 
+            mins, secs = divmod(self._remaining_time, 60)
             self.clock_label.config(text=f"{mins:02d}:{secs:02d}")
             self.timer_after_id = self.root.after(1000, self.update_timer)
-        elif self.remaining_time <= 0:
+        elif self._remaining_time <= 0:
             self.timer_complete()
 
     def mark_task_complete(self):
@@ -529,12 +542,12 @@ class PomodoroTimer(Timer):
             self.set_cat_state("sleeping")
 
         # Reset timer for the new phase
-        self.remaining_time = self.current_duration
+        self._remaining_time = self.current_duration
         self.update_display()
         self.update_cycle_display()
 
     def update_display(self):
-        mins, secs = divmod(self.remaining_time, 60)
+        mins, secs = divmod(self._remaining_time, 60)
         self.clock_label.config(text=f"{mins:02d}:{secs:02d}")
 
     def save_timer_settings(self):
