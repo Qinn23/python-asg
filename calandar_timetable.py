@@ -6,7 +6,7 @@ import json
 import os
 
 
-# ===== Inheritance Example =====
+# ===== Inheritance =====
 class BaseEvent:
     """Base class for all events"""
     def __init__(self, title, category, time):
@@ -39,7 +39,7 @@ class CalendarApp:
     def __init__(self, root):
         self.root = root
         self.root.title("📅 Calendar App")
-        self.root.geometry("900x650")
+        self.root.geometry("950x700")
         self.root.configure(bg="#f8f9fa")
 
         # File to save/load events
@@ -79,8 +79,6 @@ class CalendarApp:
         bottomFrame = tk.Frame(root, bg="#f8f9fa")
         bottomFrame.pack(pady=10)
 
-        tk.Button(bottomFrame, text="➕ Add Event", command=self.openEventForm,
-                  bg="#28a745", fg="white", width=12).grid(row=0, column=0, padx=10)
         tk.Button(bottomFrame, text="❌ Delete Event", command=self.deleteEvent,
                   bg="#dc3545", fg="white", width=12).grid(row=0, column=1, padx=10)
 
@@ -120,51 +118,56 @@ class CalendarApp:
             tk.Label(self.calendarFrame, text=day, font=("Segoe UI", 10, "bold"),
                      bg="#8e9298", relief="ridge", width=14, height=2).grid(row=1, column=col, sticky="nsew")
 
-        # Generate calendar matrix (weeks x days)
+        # Generate calendar matrix
         year, month = self.yearVar.get(), list(calendar.month_name).index(self.monthVar.get())
         monthCalendar = calendar.monthcalendar(year, month)
 
         for row, week in enumerate(monthCalendar, start=2):
             for col, day in enumerate(week):
-                if day != 0:  # Day exists
+                if day != 0:
                     dateStr = f"{year}-{month:02d}-{day:02d}"
                     today = datetime.now().date()
                     cellDate = datetime(year, month, day).date()
 
-                    # === Cell background selection (highlight today/weekends) ===
+                    # Highlight background
                     if cellDate == today:
-                        dayBg = "#90EE90"  # light green
+                        dayBg = "#90EE90"
                     elif col in (5, 6):
-                        dayBg = "#ADD8E6"  # light blue for weekends
+                        dayBg = "#ADD8E6"
                     else:
                         dayBg = "white"
 
-                    # === Cell frame ===
                     frame = tk.Frame(self.calendarFrame, relief="ridge", bd=1, bg=dayBg)
                     frame.grid(row=row, column=col, sticky="nsew", padx=1, pady=1)
 
-                    # Day label
                     tk.Label(frame, text=str(day), anchor="nw", bg=dayBg).pack(fill="x")
 
-                    # Event previews in cell
-                    for ev in self.events.get(dateStr, []):
-                        tk.Label(frame, text=f"{ev['time']} {ev['title']}",
-                                 bg=self.categoryColors[ev["category"]], fg="white",
-                                 font=("Segoe UI", 9), anchor="w").pack(fill="x", padx=2, pady=1)
+                    # Add event labels (clickable for editing)
+                    for idx, ev in enumerate(self.events.get(dateStr, [])):
+                        label = tk.Label(frame, text=f"{ev['time']} {ev['title']}",
+                                         bg=self.categoryColors[ev["category"]], fg="white",
+                                         font=("Segoe UI", 9), anchor="w")
+                        label.pack(fill="x", padx=2, pady=1)
 
-                    # Clickable to add/edit events
+                        # Bind click → open edit form
+                        label.bind("<Button-1>", lambda e, d=dateStr, i=idx, ev=ev: self.openEventForm(d, True, ev, i))
+
+                    # Click empty cell → add new event
                     frame.bind("<Button-1>", lambda e, d=dateStr: self.openEventForm(d))
 
-        # Expand grid
         for i in range(7):
             self.calendarFrame.grid_columnconfigure(i, weight=1)
         for i in range(len(monthCalendar) + 2):
             self.calendarFrame.grid_rowconfigure(i, weight=1)
 
-    # === Event creation form ===
-    def openEventForm(self, dateStr=None):
+    # === Event creation/edit form ===
+    def openEventForm(self, dateStr=None, editMode=False, existing=None, eventIndex=None):
+        if not dateStr:
+            messagebox.showerror("Error", "Please select a date on the calendar.")
+            return
+
         form = tk.Toplevel(self.root)
-        form.title("➕ Add Event")
+        form.title("✏️ Edit Event" if editMode else "➕ Add Event")
         form.geometry("300x300")
         form.configure(bg="#f8f9fa")
 
@@ -180,13 +183,18 @@ class CalendarApp:
         timeEntry = tk.Entry(form, width=25)
         timeEntry.pack()
 
+        # Pre-fill when editing
+        if editMode and existing:
+            titleEntry.insert(0, existing["title"])
+            categoryVar.set(existing["category"])
+            timeEntry.insert(0, existing["time"])
+
         # Save button
         def saveEvent():
             title = titleEntry.get().strip()
             category = categoryVar.get()
             timeStr = timeEntry.get().strip()
 
-            # === String Processing + Selection ===
             if not title:
                 messagebox.showerror("Error", "Title cannot be empty!")
                 return
@@ -195,22 +203,17 @@ class CalendarApp:
                 return
 
             try:
-                datetime.strptime(timeStr, "%H:%M")  # validate HH:MM
+                datetime.strptime(timeStr, "%H:%M")
             except:
                 messagebox.showerror("Error", "Invalid time format! Use HH:MM (24-hour).")
                 return
 
-            # === Inheritance: Create event based on category ===
-            if category == "Assignment":
-                event = AssignmentEvent(title, timeStr)
-            elif category == "Timetable":
-                event = TimetableEvent(title, timeStr)
-            else:
-                event = OtherEvent(title, timeStr)
-
-            if dateStr not in self.events:
-                self.events[dateStr] = []
-            self.events[dateStr].append(event.toDict())
+            if editMode:  # editing
+                self.events[dateStr][eventIndex] = {"title": title, "category": category, "time": timeStr}
+            else:  # adding
+                if dateStr not in self.events:
+                    self.events[dateStr] = []
+                self.events[dateStr].append({"title": title, "category": category, "time": timeStr})
 
             self.saveEvents()
             self.drawCalendar()
@@ -218,7 +221,7 @@ class CalendarApp:
 
         tk.Button(form, text="Save Event", command=saveEvent, bg="#28a745", fg="white").pack(pady=20)
 
-    # === Delete events form ===
+    # === Delete events form with category grouping ===
     def deleteEvent(self):
         if not self.events:
             messagebox.showinfo("Info", "No events to delete.")
@@ -226,46 +229,57 @@ class CalendarApp:
 
         form = tk.Toplevel(self.root)
         form.title("❌ Delete Event")
-        form.geometry("450x300")
+        form.geometry("600x400")
         form.configure(bg="#f8f9fa")
 
-        tk.Label(form, text="Select an event to delete:", bg="#f8f9fa").pack(pady=5)
+        tk.Label(form, text="Select an event to delete (grouped by category):", bg="#f8f9fa").pack(pady=5)
 
-        # Build a list of events with details
         eventList = []
+        listboxes = {}
+        frame = tk.Frame(form, bg="#f8f9fa")
+        frame.pack(fill="both", expand=True)
+
+        # Create a Listbox per category
+        for idx, category in enumerate(self.categoryColors.keys()):
+            catFrame = tk.LabelFrame(frame, text=category, bg="#f8f9fa",
+                                     fg=self.categoryColors[category], padx=5, pady=5)
+            catFrame.grid(row=0, column=idx, padx=5, pady=5, sticky="nsew")
+
+            lb = tk.Listbox(catFrame, width=30, height=12, selectmode=tk.SINGLE,
+                            bg="white", fg="black", highlightbackground=self.categoryColors[category])
+            lb.pack()
+            listboxes[category] = lb
+
+        # Populate events into correct listbox
         for date, events in self.events.items():
             for idx, ev in enumerate(events):
-                line = f"{date} | {ev['time']} | {ev['title']} ({ev['category']})"
-                eventList.append((date, idx, line))  # store date + index for deletion
-
-        # Listbox to show all events
-        listbox = tk.Listbox(form, width=60, height=10, selectmode=tk.SINGLE)
-        listbox.pack(pady=10)
-        for _, _, line in eventList:
-            listbox.insert(tk.END, line)
+                line = f"{date} | {ev['time']} | {ev['title']}"
+                eventList.append((date, idx, ev))
+                listboxes[ev["category"]].insert(tk.END, line)
 
         def deleteSelected():
-            selection = listbox.curselection()
-            if not selection:
-                messagebox.showwarning("Warning", "Please select an event to delete.")
-                return
-            index = selection[0]
-            date, evIndex, _ = eventList[index]
-
-            # Remove that specific event
-            try:
-                del self.events[date][evIndex]
-                if not self.events[date]:
-                    del self.events[date]  # clean empty dates
-                self.saveEvents()
-                self.drawCalendar()
-                form.destroy()
-                messagebox.showinfo("Deleted", "Event deleted successfully!")
-            except Exception as e:
-                messagebox.showerror("Error", f"Could not delete event: {e}")
+            for category, lb in listboxes.items():
+                selection = lb.curselection()
+                if selection:
+                    index = selection[0]
+                    chosenDate, evIndex, ev = [(d, i, e) for (d, i, e) in eventList if e["category"] == category][index]
+                    try:
+                        del self.events[chosenDate][evIndex]
+                        if not self.events[chosenDate]:
+                            del self.events[chosenDate]
+                        self.saveEvents()
+                        self.drawCalendar()
+                        form.destroy()
+                        messagebox.showinfo("Deleted", "Event deleted successfully!")
+                        return
+                    except Exception as e:
+                        messagebox.showerror("Error", f"Could not delete event: {e}")
+                        return
+            messagebox.showwarning("Warning", "Please select an event to delete.")
 
         tk.Button(form, text="Delete Selected", command=deleteSelected,
                   bg="#dc3545", fg="white").pack(pady=10)
+
 
 # Run app
 if __name__ == "__main__":
