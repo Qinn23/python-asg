@@ -1,6 +1,6 @@
 import tkinter as tk
 from tkinter import ttk, messagebox, filedialog, simpledialog
-import time
+import shutil
 import winsound
 import random
 from threading import Thread
@@ -540,8 +540,22 @@ class PomodoroTimer(Timer):
         file_path = filedialog.askopenfilename(title=f"Select {sound_type.replace('_', ' ')}",
                                                filetypes=(("Mp3 files", "*.mp3"), ("All files", "*.*")))
         if file_path:
-            self.settings[sound_type] = file_path
-            self.save_settings()
+            try:
+                # Ensure 'sounds' folder exists in your app directory
+                os.makedirs("sounds", exist_ok=True)
+
+                # Copy the selected file into the 'sounds' folder
+                filename = os.path.basename(file_path)
+                destination = os.path.join("sounds", filename)
+
+                shutil.copy(file_path, destination)
+
+                # Save the relative path in settings
+                self.settings[sound_type] = destination
+                self.save_settings()
+                messagebox.showinfo("Sound Saved", f"{sound_type.replace('_', ' ').title()} saved locally!")
+            except Exception as e:
+                messagebox.showerror("Error", f"Could not save sound: {e}")
 
     def play_sound(self, sound_file):
         try:
