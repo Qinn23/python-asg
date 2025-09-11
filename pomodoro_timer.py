@@ -104,6 +104,12 @@ class PomodoroTimer(Timer):
                 self.create_default_settings()
         except:
             self.create_default_settings()
+        
+        # Load default sounds first time if not set
+        default_folder = "pomodoro_defaultsound"
+        self.settings['focus_sound'] = self.settings.get('focus_sound') or os.path.join(default_folder, "focus.mp3")
+        self.settings['break_sound'] = self.settings.get('break_sound') or os.path.join(default_folder, "break.mp3")
+        self.settings['task_complete_sound'] = self.settings.get('task_complete_sound') or os.path.join(default_folder, "complete.mp3")
 
     def create_default_settings(self):
         self.settings = {
@@ -273,10 +279,21 @@ class PomodoroTimer(Timer):
         self.root.wait_window(task_window)
 
     def delete_task(self):
+
+        if not self.tasks:  # Check if task list is empty
+            messagebox.showwarning("No Tasks", "There are no tasks to delete!")
+            return
+
+        selection = self.task_listbox.curselection()
+        
+        if not selection:
+            messagebox.showwarning("No Task Selected", "Please select a task to delete!")
+            return
+        
         selection = self.task_listbox.curselection()
         if not selection:
             return
-
+        
         # If multiple are selected (if you ever change selectmode), delete in reverse order
         indices = list(selection)
         for index in reversed(indices):
@@ -292,6 +309,10 @@ class PomodoroTimer(Timer):
             self.current_task = ""
 
     def clear_tasks(self):
+        if not self.tasks:  # Check if task list is empty
+            messagebox.showwarning("No Tasks", "There are no tasks to clear!")
+            return
+
         if messagebox.askyesno("Clear All Tasks", "Remove ALL tasks?"):
             self.tasks.clear()
             self.task_listbox.delete(0, tk.END)
@@ -689,7 +710,7 @@ class PomodoroTimer(Timer):
                 messagebox.showinfo("Settings Saved", "Timer settings updated successfully!")
                 settings_window.destroy()
             except Exception as e:
-                messagebox.showerror("Invalid Input", str(e))
+                messagebox.showerror("Invalid Input", "Please enter numbers only.")
 
         ttk.Button(settings_window, text="Save Settings", command=save_and_close).pack(pady=15)
 
