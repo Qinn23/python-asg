@@ -1,1 +1,1 @@
-{"focus_time": 25, "break_time": 5, "long_break_time": 15, "coins": 16, "cat_items": ["Fish", "Fish", "Fish", "Fish", "Ball"], "focus_sound": "Pomodoro_defaultsound/focus.mp3", "break_sound": "Pomodoro_defaultsound/break.mp3", "task_complete_sound": "Pomodoro_defaultsound/complete.mp3"}
+{"focus_time": 25, "break_time": 5, "long_break_time": 15, "coins": 11, "cat_items": ["Fish", "Fish", "Fish", "Fish", "Ball"], "focus_sound": "Pomodoro_defaultsound/focus.mp3", "break_sound": "Pomodoro_defaultsound/break.mp3", "task_complete_sound": "Pomodoro_defaultsound/complete.mp3"}
