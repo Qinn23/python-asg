@@ -41,6 +41,7 @@ class CalendarApp:
         self.root.title("📅 Calendar App")
         self.root.geometry("950x700")
         self.root.configure(bg="#f8f9fa")
+        self.activeForm = None  # track Add/Edit popup
 
         # File to save/load events
         self.jsonFile = "calendar_data.json"
@@ -162,15 +163,28 @@ class CalendarApp:
 
     # === Event creation/edit form ===
     def openEventForm(self, dateStr=None, editMode=False, existing=None, eventIndex=None):
-        if not dateStr:
-            messagebox.showerror("Error", "Please select a date on the calendar.")
+        # Prevent multiple popups
+        if self.activeForm and tk.Toplevel.winfo_exists(self.activeForm):
+            self.activeForm.lift()
             return
 
-        form = tk.Toplevel(self.root)
+        self.activeForm = tk.Toplevel(self.root)
+        form = self.activeForm
         form.title("✏️ Edit Event" if editMode else "➕ Add Event")
         form.geometry("300x300")
         form.configure(bg="#f8f9fa")
 
+        # Reset tracker when window is closed
+        def onClose():
+            self.activeForm = None
+            form.destroy()
+        form.protocol("WM_DELETE_WINDOW", onClose)
+
+        if not dateStr:
+            messagebox.showerror("Error", "Please select a date on the calendar.")
+            return
+
+        # --- Input fields ---
         tk.Label(form, text="Title:", bg="#f8f9fa").pack(pady=5)
         titleEntry = tk.Entry(form, width=25)
         titleEntry.pack()
@@ -189,45 +203,73 @@ class CalendarApp:
             categoryVar.set(existing["category"])
             timeEntry.insert(0, existing["time"])
 
-        # Save button
+        # --- Save button handler ---
         def saveEvent():
             title = titleEntry.get().strip()
             category = categoryVar.get()
             timeStr = timeEntry.get().strip()
 
+            # Validation
             if not title:
                 messagebox.showerror("Error", "Title cannot be empty!")
                 return
-            if any(char.isdigit() or not char.isalnum() and char != " " for char in title):
+            if any(char.isdigit() or (not char.isalnum() and char != " ") for char in title):
                 messagebox.showerror("Error", "Title cannot contain numbers or symbols!")
                 return
-
             try:
                 datetime.strptime(timeStr, "%H:%M")
             except:
                 messagebox.showerror("Error", "Invalid time format! Use HH:MM (24-hour).")
                 return
 
-            if editMode:  # editing
-                self.events[dateStr][eventIndex] = {"title": title, "category": category, "time": timeStr}
-            else:  # adding
+            # Save (edit or add)
+            if editMode and eventIndex is not None:
+                self.events[dateStr][eventIndex] = {
+                    "title": title,
+                    "category": category,
+                    "time": timeStr
+                }
+            else:
                 if dateStr not in self.events:
                     self.events[dateStr] = []
-                self.events[dateStr].append({"title": title, "category": category, "time": timeStr})
+                self.events[dateStr].append({
+                    "title": title,
+                    "category": category,
+                    "time": timeStr
+                })
 
+            # Save + refresh
             self.saveEvents()
             self.drawCalendar()
+            self.activeForm = None
             form.destroy()
 
-        tk.Button(form, text="Save Event", command=saveEvent, bg="#28a745", fg="white").pack(pady=20)
+        # --- Save button ---
+        tk.Button(form, text="Save Event", command=saveEvent,
+                bg="#28a745", fg="white", width=12).pack(pady=15)
+
 
     # === Delete events form with category grouping ===
     def deleteEvent(self):
+        if self.activeForm and tk.Toplevel.winfo_exists(self.activeForm):
+            self.activeForm.lift()
+            return
+
+        self.activeForm = tk.Toplevel(self.root)
+        form = self.activeForm
+        form.title("❌ Delete Event")
+        form.geometry("450x300")
+        form.configure(bg="#f8f9fa")
+
+        def onClose():
+            self.activeForm = None
+            form.destroy()
+        form.protocol("WM_DELETE_WINDOW", onClose)
+
         if not self.events:
             messagebox.showinfo("Info", "No events to delete.")
             return
 
-        form = tk.Toplevel(self.root)
         form.title("❌ Delete Event")
         form.geometry("600x400")
         form.configure(bg="#f8f9fa")
@@ -242,7 +284,7 @@ class CalendarApp:
         # Create a Listbox per category
         for idx, category in enumerate(self.categoryColors.keys()):
             catFrame = tk.LabelFrame(frame, text=category, bg="#f8f9fa",
-                                     fg=self.categoryColors[category], padx=5, pady=5)
+                                    fg=self.categoryColors[category], padx=5, pady=5)
             catFrame.grid(row=0, column=idx, padx=5, pady=5, sticky="nsew")
 
             lb = tk.Listbox(catFrame, width=30, height=12, selectmode=tk.SINGLE,
@@ -278,7 +320,7 @@ class CalendarApp:
             messagebox.showwarning("Warning", "Please select an event to delete.")
 
         tk.Button(form, text="Delete Selected", command=deleteSelected,
-                  bg="#dc3545", fg="white").pack(pady=10)
+            bg="#dc3545", fg="white").pack(pady=10)
 
 
 # Run app
