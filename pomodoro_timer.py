@@ -160,16 +160,16 @@ class PomodoroTimer(Timer):
         self.task_listbox.pack(pady=5)
 
         # Buttons for tasks
-        btn_frame = tk.Frame(task_frame, bg='#f5f5f5')
-        btn_frame.pack()
+        task_btn_frame = tk.Frame(task_frame, bg='#f5f5f5')
+        task_btn_frame.pack()
 
-        ttk.Button(btn_frame, text="Add Task", command=self.add_task).grid(row=0, column=0, padx=5)
-        ttk.Button(btn_frame, text="Delete Task", command=self.delete_task).grid(row=0, column=1, padx=5)
-        ttk.Button(btn_frame, text="Clear Tasks", command=self.clear_tasks).grid(row=0, column=2, padx=5)
+        ttk.Button(task_btn_frame, text="Add Task", command=self.add_task).grid(row=0, column=0, padx=5)
+        ttk.Button(task_btn_frame, text="Delete Task", command=self.delete_task).grid(row=0, column=1, padx=5)
+        ttk.Button(task_btn_frame, text="Clear Tasks", command=self.clear_tasks).grid(row=0, column=2, padx=5)
         ToolTip(self.task_listbox, "💡 Select a task from the list before pressing Delete")
 
         # Mark Complete button (only visible during long breaks)
-        self.mark_complete_button = ttk.Button(btn_frame, text="Mark Complete", command=self.mark_task_complete)
+        self.mark_complete_button = ttk.Button(task_btn_frame, text="Mark Complete", command=self.mark_task_complete)
         self.mark_complete_button.grid(row=1, column=0, columnspan=3, pady=5)
         self.mark_complete_button.grid_remove() 
         
@@ -301,12 +301,12 @@ class PomodoroTimer(Timer):
     def start_timer(self):
         # For focus sessions, ensure a task is selected
         if self.is_focus:
-            sel = self.task_listbox.curselection()
-            if not sel:
+            selected_indices = self.task_listbox.curselection()
+            if not selected_indices:
                 messagebox.showwarning("No Task", "Please select or add a task first!")
                 return
 
-            selected_task = self.task_listbox.get(sel[0]).strip()
+            selected_task = self.task_listbox.get(selected_indices[0]).strip()
 
             # Prevent starting on completed task
             if selected_task.startswith("✔"):
@@ -343,12 +343,12 @@ class PomodoroTimer(Timer):
 
     def skip_timer(self):
         if self.is_focus:
-            sel = self.task_listbox.curselection()
-        if not sel:
+            selected_indices = self.task_listbox.curselection()
+        if not selected_indices:
             messagebox.showwarning("No Task", "Please select or add a task first!")
             return
 
-        selected_task = self.task_listbox.get(sel[0]).strip()
+        selected_task = self.task_listbox.get(selected_indices[0]).strip()
         if selected_task.startswith("✔"):
             messagebox.showwarning("Task Completed", "Please select or add a new task before skipping.")
             return
@@ -396,12 +396,12 @@ class PomodoroTimer(Timer):
             self.timer_complete()
 
     def mark_task_complete(self):
-        sel = self.task_listbox.curselection()
-        if not sel:
+        selected_indices = self.task_listbox.curselection()
+        if not selected_indices:
             messagebox.showwarning("No Task Selected", "Please select a task to mark as complete!")
             return
     
-        index = sel[0]
+        index = selected_indices[0]
         task_text = self.task_listbox.get(index).lstrip("✔ ").strip()
     
         # Don't mark already completed tasks
@@ -541,19 +541,19 @@ class PomodoroTimer(Timer):
                                                filetypes=(("Mp3 files", "*.mp3"), ("All files", "*.*")))
         if file_path:
             try:
-                # Ensure 'sounds' folder exists in your app directory
-                os.makedirs("sounds", exist_ok=True)
+                # Ensure 'Pomodoro_sounds' folder exists in your app directory
+                os.makedirs("Pomodoro_sounds", exist_ok=True)
 
-                # Copy the selected file into the 'sounds' folder
+                # Copy the selected file into the 'Pomodoro_sounds' folder
                 filename = os.path.basename(file_path)
-                destination = os.path.join("sounds", filename)
+                destination = os.path.join("Pomodoro_sounds", filename)
 
                 shutil.copy(file_path, destination)
 
                 # Save the relative path in settings
                 self.settings[sound_type] = destination
                 self.save_settings()
-                messagebox.showinfo("Sound Saved", f"{sound_type.replace('_', ' ').title()} saved locally!")
+                messagebox.showinfo("Sound Saved", f"{sound_type.replace('_', ' ').title()} saved successfully!")
             except Exception as e:
                 messagebox.showerror("Error", f"Could not save sound: {e}")
 
@@ -566,7 +566,7 @@ class PomodoroTimer(Timer):
         except Exception as e:
             print(f"Error playing sound: {e}")
 
-    def connect_music_app(self):
+    def open_music_app(self):
         choice = messagebox.askyesno("Music Apps",
                                      "Would you like to open Youtube music?\nRequires internet connection.")
         if choice:
@@ -591,13 +591,13 @@ class PomodoroTimer(Timer):
         item_frame.pack(pady=10)
 
         for item in items:
-            row = tk.Frame(item_frame)
-            row.pack(fill=tk.X, pady=5)
-            tk.Label(row, text=f"{item['icon']} {item['name']}: {item['price']} coins",
+            item_row = tk.Frame(item_frame)
+            item_row.pack(fill=tk.X, pady=5)
+            tk.Label(item_row, text=f"{item['icon']} {item['name']}: {item['price']} coins",
                      width=25, anchor=tk.W).pack(side=tk.LEFT)
 
             state = tk.NORMAL if self.coins >= item['price'] else tk.DISABLED
-            ttk.Button(row, text="Buy", command=lambda i=item: self.buy_item(i), state=state).pack(side=tk.RIGHT)
+            ttk.Button(item_row, text="Buy", command=lambda i=item: self.buy_item(i), state=state).pack(side=tk.RIGHT)
 
         ttk.Button(shop_window, text="Close", command=shop_window.destroy).pack(pady=10)
 
@@ -639,7 +639,7 @@ class PomodoroTimer(Timer):
                command=lambda: self.set_sound('task_complete_sound')).pack(pady=5)
 
         # Connect to Music App
-        ttk.Button(sound_window, text="Connect to Music App", command=self.connect_music_app).pack(pady=10)
+        ttk.Button(sound_window, text="Connect to Music App", command=self.open_music_app).pack(pady=10)
 
     def open_timer_settings(self):
         settings_window = tk.Toplevel(self.root)
@@ -649,24 +649,24 @@ class PomodoroTimer(Timer):
 
         tk.Label(settings_window, text="Timer Settings", font=('Arial', 16, 'bold'), bg='#f5f5f5').pack(pady=10)
 
-        frame = tk.Frame(settings_window, bg='#f5f5f5')
-        frame.pack(pady=10)
+        timer_setting_frame = tk.Frame(settings_window, bg='#f5f5f5')
+        timer_setting_frame.pack(pady=10)
 
         # Focus Time
-        tk.Label(frame, text="Focus Time (min):", bg='#f5f5f5').grid(row=0, column=0, padx=5, pady=5, sticky="w")
-        focus_entry = ttk.Entry(frame, width=5)
+        tk.Label(timer_setting_frame, text="Focus Time (min):", bg='#f5f5f5').grid(row=0, column=0, padx=5, pady=5, sticky="w")
+        focus_entry = ttk.Entry(timer_setting_frame, width=5)
         focus_entry.insert(0, str(self.settings['focus_time']))
         focus_entry.grid(row=0, column=1, padx=5, pady=5)
 
         # Break Time
-        tk.Label(frame, text="Break Time (min):", bg='#f5f5f5').grid(row=1, column=0, padx=5, pady=5, sticky="w")
-        break_entry = ttk.Entry(frame, width=5)
+        tk.Label(timer_setting_frame, text="Break Time (min):", bg='#f5f5f5').grid(row=1, column=0, padx=5, pady=5, sticky="w")
+        break_entry = ttk.Entry(timer_setting_frame, width=5)
         break_entry.insert(0, str(self.settings['break_time']))
         break_entry.grid(row=1, column=1, padx=5, pady=5)
 
         # Long Break Time
-        tk.Label(frame, text="Long Break (min):", bg='#f5f5f5').grid(row=2, column=0, padx=5, pady=5, sticky="w")
-        long_break_entry = ttk.Entry(frame, width=5)
+        tk.Label(timer_setting_frame, text="Long Break (min):", bg='#f5f5f5').grid(row=2, column=0, padx=5, pady=5, sticky="w")
+        long_break_entry = ttk.Entry(timer_setting_frame, width=5)
         long_break_entry.insert(0, str(self.settings['long_break_time']))
         long_break_entry.grid(row=2, column=1, padx=5, pady=5)
 
