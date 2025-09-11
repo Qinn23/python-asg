@@ -342,6 +342,18 @@ class PomodoroTimer(Timer):
             winsound.PlaySound(None, winsound.SND_PURGE)
 
     def skip_timer(self):
+        if self.is_focus:
+            sel = self.task_listbox.curselection()
+        if not sel:
+            messagebox.showwarning("No Task", "Please select or add a task first!")
+            return
+
+        selected_task = self.task_listbox.get(sel[0]).strip()
+        if selected_task.startswith("✔"):
+            messagebox.showwarning("Task Completed", "Please select or add a new task before skipping.")
+            return
+
+        self.current_task = selected_task
         self.is_running = False
 
         # Cancel pending timer update if exists
