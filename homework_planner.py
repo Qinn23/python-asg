@@ -361,3 +361,9 @@ class HomeworkPlannerApp:
 			self.homework_list = []
 
 
+if __name__ == "__main__":
+    root = tk.Tk()
+    root.withdraw()
+    app = HomeworkPlannerApp(root)
+    app.open_homework_planner_window()
+    root.mainloop()
