@@ -20,7 +20,9 @@
     "title": "infinity castle",
     "description": "muzan",
     "due_date": "2025-08-14",
-    "status": "Pending"
+    "status": "Completed",
+    "time_required": 20,
+    "timed": true
   },
   {
     "subject": "japenese",
