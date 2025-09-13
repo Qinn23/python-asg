@@ -10,23 +10,90 @@ import os
 class BaseEvent:
     """Base class for all events"""
     def __init__(self, title, category, time):
-        self.title = title
-        self.category = category
-        self.time = time
+        self.__title = title
+        self.__category = category
+        self.__time = time
+
+    # Getter and Setter for title
+    @property
+    def title(self):
+        return self.__title
+
+    @title.setter
+    def title(self, value):
+        self.__title = value
+
+    # Getter and Setter for category
+    @property
+    def category(self):
+        return self.__category
+
+    @category.setter
+    def category(self, value):
+        self.__category = value
+
+    # Getter and Setter for time
+    @property
+    def time(self):
+        return self.__time
+
+    @time.setter
+    def time(self, value):
+        self.__time = value
 
     def toDict(self):
-        """Convert event into dictionary for JSON saving"""
-        return {"title": self.title, "category": self.category, "time": self.time}
+        return {"title": self.__title, "category": self.__category, "time": self.__time}
 
 
 class AssignmentEvent(BaseEvent):
-    def __init__(self, title, time):
+    def __init__(self, title, time, description):
         super().__init__(title, "Assignment", time)
+        self.__description = description
+
+    # Getter and Setter for description
+    @property
+    def description(self):
+        return self.__description
+
+    @description.setter
+    def description(self, value):
+        self.__description = value
+
+    def toDict(self):
+        base = super().toDict()
+        base["description"] = self.__description
+        return base
 
 
 class TimetableEvent(BaseEvent):
-    def __init__(self, title, time):
-        super().__init__(title, "Timetable", time)
+    def __init__(self, title, startTime, endTime):
+        super().__init__(title, "Timetable", f"{startTime}-{endTime}")
+        self.__startTime = startTime
+        self.__endTime = endTime
+
+    # Getter and Setter for startTime
+    @property
+    def startTime(self):
+        return self.__startTime
+
+    @startTime.setter
+    def startTime(self, value):
+        self.__startTime = value
+
+    # Getter and Setter for endTime
+    @property
+    def endTime(self):
+        return self.__endTime
+
+    @endTime.setter
+    def endTime(self, value):
+        self.__endTime = value
+
+    def toDict(self):
+        base = super().toDict()
+        base["startTime"] = self.__startTime
+        base["endTime"] = self.__endTime
+        return base
 
 
 class OtherEvent(BaseEvent):
@@ -41,15 +108,11 @@ class CalendarApp:
         self.root.title("📅 Calendar App")
         self.root.geometry("950x700")
         self.root.configure(bg="#f8f9fa")
-        self.activeForm = None  # track Add/Edit popup
+        self.activeForm = None
 
-        # File to save/load events
         self.jsonFile = "calendar_data.json"
-
-        # Load events into memory (dictionary)
         self.events = self.loadEvents()
 
-        # Category colors
         self.categoryColors = {
             "Assignment": "#d68a8a",
             "Timetable": "#6cb287",
@@ -85,7 +148,7 @@ class CalendarApp:
 
         self.drawCalendar()
 
-    # === Load events from JSON file ===
+    # === Load/Save Events ===
     def loadEvents(self):
         try:
             if os.path.exists(self.jsonFile):
@@ -95,7 +158,6 @@ class CalendarApp:
             messagebox.showerror("Error", f"Failed to load events: {e}")
         return {}
 
-    # === Save events into JSON file ===
     def saveEvents(self):
         try:
             with open(self.jsonFile, "w") as f:
@@ -103,23 +165,19 @@ class CalendarApp:
         except Exception as e:
             messagebox.showerror("Error", f"Failed to save events: {e}")
 
-    # === Draw monthly calendar ===
+    # === Calendar Drawing ===
     def drawCalendar(self):
-        # Clear old calendar
         for widget in self.calendarFrame.winfo_children():
             widget.destroy()
 
-        # Month-Year title
         tk.Label(self.calendarFrame, text=f"{self.monthVar.get()} {self.yearVar.get()}",
                  font=("Segoe UI", 16, "bold"), bg="#f8f9fa").grid(row=0, column=0, columnspan=7, pady=10)
 
-        # Weekday header row
         days = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
         for col, day in enumerate(days):
             tk.Label(self.calendarFrame, text=day, font=("Segoe UI", 10, "bold"),
                      bg="#8e9298", relief="ridge", width=14, height=2).grid(row=1, column=col, sticky="nsew")
 
-        # Generate calendar matrix
         year, month = self.yearVar.get(), list(calendar.month_name).index(self.monthVar.get())
         monthCalendar = calendar.monthcalendar(year, month)
 
@@ -130,7 +188,6 @@ class CalendarApp:
                     today = datetime.now().date()
                     cellDate = datetime(year, month, day).date()
 
-                    # Highlight background
                     if cellDate == today:
                         dayBg = "#90EE90"
                     elif col in (5, 6):
@@ -143,17 +200,20 @@ class CalendarApp:
 
                     tk.Label(frame, text=str(day), anchor="nw", bg=dayBg).pack(fill="x")
 
-                    # Add event labels (clickable for editing)
                     for idx, ev in enumerate(self.events.get(dateStr, [])):
-                        label = tk.Label(frame, text=f"{ev['time']} {ev['title']}",
+                        if ev["category"] == "Assignment":
+                            text = f"{ev['time']} {ev['title']} ({ev.get('description','')})"
+                        elif ev["category"] == "Timetable":
+                            text = f"{ev.get('startTime','?')}-{ev.get('endTime','?')} {ev['title']}"
+                        else:
+                            text = f"{ev['time']} {ev['title']}"
+
+                        label = tk.Label(frame, text=text,
                                          bg=self.categoryColors[ev["category"]], fg="white",
                                          font=("Segoe UI", 9), anchor="w")
                         label.pack(fill="x", padx=2, pady=1)
-
-                        # Bind click → open edit form
                         label.bind("<Button-1>", lambda e, d=dateStr, i=idx, ev=ev: self.openEventForm(d, True, ev, i))
 
-                    # Click empty cell → add new event
                     frame.bind("<Button-1>", lambda e, d=dateStr: self.openEventForm(d))
 
         for i in range(7):
@@ -161,9 +221,8 @@ class CalendarApp:
         for i in range(len(monthCalendar) + 2):
             self.calendarFrame.grid_rowconfigure(i, weight=1)
 
-    # === Event creation/edit form ===
+    # === Event Form (Add/Edit) ===
     def openEventForm(self, dateStr=None, editMode=False, existing=None, eventIndex=None):
-        # Prevent multiple popups
         if self.activeForm and tk.Toplevel.winfo_exists(self.activeForm):
             self.activeForm.lift()
             return
@@ -171,10 +230,9 @@ class CalendarApp:
         self.activeForm = tk.Toplevel(self.root)
         form = self.activeForm
         form.title("✏️ Edit Event" if editMode else "➕ Add Event")
-        form.geometry("300x300")
+        form.geometry("350x400")
         form.configure(bg="#f8f9fa")
 
-        # Reset tracker when window is closed
         def onClose():
             self.activeForm = None
             form.destroy()
@@ -184,7 +242,6 @@ class CalendarApp:
             messagebox.showerror("Error", "Please select a date on the calendar.")
             return
 
-        # --- Input fields ---
         tk.Label(form, text="Title:", bg="#f8f9fa").pack(pady=5)
         titleEntry = tk.Entry(form, width=25)
         titleEntry.pack()
@@ -193,61 +250,119 @@ class CalendarApp:
         categoryVar = tk.StringVar(value="Assignment")
         tk.OptionMenu(form, categoryVar, *self.categoryColors.keys()).pack()
 
-        tk.Label(form, text="Time (HH:MM):", bg="#f8f9fa").pack(pady=5)
-        timeEntry = tk.Entry(form, width=25)
-        timeEntry.pack()
+        extraFrame = tk.Frame(form, bg="#f8f9fa")
+        extraFrame.pack(pady=5)
 
-        # Pre-fill when editing
+        fields = {}
+
+        def updateFields(*args):
+            for widget in extraFrame.winfo_children():
+                widget.destroy()
+            fields.clear()
+
+            if categoryVar.get() == "Assignment":
+                tk.Label(extraFrame, text="Time (HH:MM):", bg="#f8f9fa").pack(pady=2)
+                timeEntry = tk.Entry(extraFrame, width=25)
+                timeEntry.pack()
+                tk.Label(extraFrame, text="Description:", bg="#f8f9fa").pack(pady=2)
+                descBox = tk.Text(extraFrame, width=25, height=4)  # bigger box
+                descBox.pack()
+                fields["time"] = timeEntry
+                fields["desc"] = descBox
+
+            elif categoryVar.get() == "Timetable":
+                tk.Label(extraFrame, text="Start Time (HH:MM):", bg="#f8f9fa").pack(pady=2)
+                startEntry = tk.Entry(extraFrame, width=25)
+                startEntry.pack()
+                tk.Label(extraFrame, text="End Time (HH:MM):", bg="#f8f9fa").pack(pady=2)
+                endEntry = tk.Entry(extraFrame, width=25)
+                endEntry.pack()
+                fields["start"] = startEntry
+                fields["end"] = endEntry
+
+            else:  # Others
+                tk.Label(extraFrame, text="Time (HH:MM):", bg="#f8f9fa").pack(pady=2)
+                timeEntry = tk.Entry(extraFrame, width=25)
+                timeEntry.pack()
+                fields["time"] = timeEntry
+
+        categoryVar.trace("w", updateFields)
+        updateFields()
+
+        # Prefill values
         if editMode and existing:
             titleEntry.insert(0, existing["title"])
             categoryVar.set(existing["category"])
-            timeEntry.insert(0, existing["time"])
+            if existing["category"] == "Assignment":
+                fields["time"].insert(0, existing["time"])
+                fields["desc"].insert("1.0", existing.get("description", ""))
+            elif existing["category"] == "Timetable":
+                fields["start"].insert(0, existing.get("startTime", ""))
+                fields["end"].insert(0, existing.get("endTime", ""))
+            else:
+                fields["time"].insert(0, existing.get("time", ""))
 
-        # --- Save button handler ---
         def saveEvent():
             title = titleEntry.get().strip()
             category = categoryVar.get()
-            timeStr = timeEntry.get().strip()
 
-            # Validation
             if not title:
                 messagebox.showerror("Error", "Title cannot be empty!")
                 return
             if any(char.isdigit() or (not char.isalnum() and char != " ") for char in title):
                 messagebox.showerror("Error", "Title cannot contain numbers or symbols!")
                 return
-            try:
-                datetime.strptime(timeStr, "%H:%M")
-            except:
-                messagebox.showerror("Error", "Invalid time format! Use HH:MM (24-hour).")
-                return
 
-            # Save (edit or add)
+            if category == "Assignment":
+                timeStr = fields["time"].get().strip()
+                desc = fields["desc"].get("1.0", "end").strip()
+                if not desc:
+                    messagebox.showerror("Error", "Description cannot be empty!")
+                    return
+                try:
+                    datetime.strptime(timeStr, "%H:%M")
+                except:
+                    messagebox.showerror("Error", "Invalid time format! Use HH:MM.")
+                    return
+                newEvent = AssignmentEvent(title, timeStr, desc).toDict()
+
+            elif category == "Timetable":
+                startStr = fields["start"].get().strip()
+                endStr = fields["end"].get().strip()
+                try:
+                    start = datetime.strptime(startStr, "%H:%M")
+                    end = datetime.strptime(endStr, "%H:%M")
+                    if end <= start:
+                        messagebox.showerror("Error", "End time must be later than start time!")
+                        return
+                except:
+                    messagebox.showerror("Error", "Invalid time format! Use HH:MM.")
+                    return
+                newEvent = TimetableEvent(title, startStr, endStr).toDict()
+
+            else:  # Others
+                timeStr = fields["time"].get().strip()
+                try:
+                    datetime.strptime(timeStr, "%H:%M")
+                except:
+                    messagebox.showerror("Error", "Invalid time format! Use HH:MM.")
+                    return
+                newEvent = OtherEvent(title, timeStr).toDict()
+
             if editMode and eventIndex is not None:
-                self.events[dateStr][eventIndex] = {
-                    "title": title,
-                    "category": category,
-                    "time": timeStr
-                }
+                self.events[dateStr][eventIndex] = newEvent
             else:
                 if dateStr not in self.events:
                     self.events[dateStr] = []
-                self.events[dateStr].append({
-                    "title": title,
-                    "category": category,
-                    "time": timeStr
-                })
+                self.events[dateStr].append(newEvent)
 
-            # Save + refresh
             self.saveEvents()
             self.drawCalendar()
             self.activeForm = None
             form.destroy()
 
-        # --- Save button ---
         tk.Button(form, text="Save Event", command=saveEvent,
-                bg="#28a745", fg="white", width=12).pack(pady=15)
-
+                  bg="#28a745", fg="white", width=12).pack(pady=15)
 
     # === Delete events form with category grouping ===
     def deleteEvent(self):
@@ -258,7 +373,7 @@ class CalendarApp:
         self.activeForm = tk.Toplevel(self.root)
         form = self.activeForm
         form.title("❌ Delete Event")
-        form.geometry("450x300")
+        form.geometry("750x400")
         form.configure(bg="#f8f9fa")
 
         def onClose():
@@ -270,11 +385,8 @@ class CalendarApp:
             messagebox.showinfo("Info", "No events to delete.")
             return
 
-        form.title("❌ Delete Event")
-        form.geometry("600x400")
-        form.configure(bg="#f8f9fa")
-
-        tk.Label(form, text="Select an event to delete (grouped by category):", bg="#f8f9fa").pack(pady=5)
+        tk.Label(form, text="Select an event to delete (grouped by category):", 
+                 bg="#f8f9fa").pack(pady=5)
 
         eventList = []
         listboxes = {}
@@ -287,7 +399,7 @@ class CalendarApp:
                                     fg=self.categoryColors[category], padx=5, pady=5)
             catFrame.grid(row=0, column=idx, padx=5, pady=5, sticky="nsew")
 
-            lb = tk.Listbox(catFrame, width=30, height=12, selectmode=tk.SINGLE,
+            lb = tk.Listbox(catFrame, width=35, height=14, selectmode=tk.SINGLE,
                             bg="white", fg="black", highlightbackground=self.categoryColors[category])
             lb.pack()
             listboxes[category] = lb
@@ -295,7 +407,13 @@ class CalendarApp:
         # Populate events into correct listbox
         for date, events in self.events.items():
             for idx, ev in enumerate(events):
-                line = f"{date} | {ev['time']} | {ev['title']}"
+                if ev["category"] == "Assignment":
+                    line = f"{date} | {ev['time']} | {ev['title']} ({ev.get('description','')})"
+                elif ev["category"] == "Timetable":
+                    line = f"{date} | {ev.get('startTime','?')} - {ev.get('endTime','?')} | {ev['title']}"
+                else:  # Others
+                    line = f"{date} | {ev['time']} | {ev['title']}"
+
                 eventList.append((date, idx, ev))
                 listboxes[ev["category"]].insert(tk.END, line)
 
@@ -321,7 +439,6 @@ class CalendarApp:
 
         tk.Button(form, text="Delete Selected", command=deleteSelected,
             bg="#dc3545", fg="white").pack(pady=10)
-
 
 # Run app
 if __name__ == "__main__":
