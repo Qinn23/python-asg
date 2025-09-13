@@ -1,16 +1,17 @@
 import tkinter as tk
 from tkinter import ttk, messagebox, filedialog, simpledialog
+import json
 import shutil
+import os
 import winsound
 import random
 from threading import Thread
-import json
-import os
+import pygame
 import webbrowser
 from PIL import Image, ImageTk
-import pygame
 
 class Timer:
+    # Timer base class for countdown logic
     def __init__(self, duration=0):
         self.duration = duration  # in seconds
         self._remaining_time = duration
@@ -25,10 +26,8 @@ class Timer:
     def reset(self):
         self._remaining_time = self.duration
 
-    def remaining_time(self):
-        return self._remaining_time
-
 class ToolTip:
+    # Tooltip helper for Tkinter widgets
     def __init__(self, widget, text, delay=500):
         self.widget = widget
         self.text = text
@@ -39,15 +38,18 @@ class ToolTip:
         self.widget.bind("<Leave>", self.hide_tip)
 
     def schedule(self, event=None):
+        # Schedule the tooltip to appear after a delay
         self.unschedule()
         self.id = self.widget.after(self.delay, self.show_tip)
 
     def unschedule(self):
+        # Cancel scheduled tooltip if mouse leaves early
         if self.id:
             self.widget.after_cancel(self.id)
             self.id = None
 
     def show_tip(self):
+        # Display the tooltip
         if self.tip_window or not self.text:
             return
     
@@ -66,12 +68,15 @@ class ToolTip:
         self.widget.after(5000, self.hide_tip)
 
     def hide_tip(self, event=None):
+        # Hide the tooltip
         if self.tip_window:
             self.tip_window.destroy()
             self.tip_window = None
     
 class PomodoroTimer(Timer):
+    # Main Pomodoro Timer class with UI and gamification
     def __init__(self, root):
+        # Initialize the Pomodoro timer window and variables
         super().__init__(duration=25*60)
         self.root = root
         self.root.title("Purr-odoro Timer")
@@ -83,23 +88,97 @@ class PomodoroTimer(Timer):
 
         # Initialize variables
         self.is_running = False
-        self.is_focus = True
+        self._is_focus = True
         self._remaining_time = self.settings['focus_time'] * 60
-        self.pomodoro_count = 0
-        self.coins = 10  # Starting coins
-        self.current_task = ""
-        self.tasks = [] 
-        self.cat_state = "normal"  # normal, sleeping, happy
-        self.focus_sessions_in_cycle = 0
+        self._pomodoro_count = 0
+        self._coins = 10  # Starting coins
+        self._current_task = ""
+        self._tasks = [] 
+        self._cat_state = "normal"  # normal, sleeping, happy
+        self._focus_sessions_in_cycle = 0
 
-        self.timer_after_id = None
-        self.current_duration = self.settings['focus_time'] * 60
-        self._remaining_time = self.current_duration
+        self._timer_after_id = None
+        self._current_duration = self.settings['focus_time'] * 60
+        self._remaining_time = self._current_duration
 
         # Setup UI
         self.setup_ui()
 
+    # Properties for protected variables
+    @property
+    def is_focus(self):
+        return self._is_focus
+
+    @is_focus.setter
+    def is_focus(self, value):
+        self._is_focus = value
+
+    @property
+    def pomodoro_count(self):
+        return self._pomodoro_count
+
+    @pomodoro_count.setter
+    def pomodoro_count(self, value):
+        self._pomodoro_count = value
+
+    @property
+    def coins(self):
+        return self._coins
+
+    @coins.setter
+    def coins(self, value):
+        self._coins = value
+
+    @property
+    def current_task(self):
+        return self._current_task
+
+    @current_task.setter
+    def current_task(self, value):
+        self._current_task = value
+
+    @property
+    def tasks(self):
+        return self._tasks
+
+    @tasks.setter
+    def tasks(self, value):
+        self._tasks = value
+
+    @property
+    def cat_state(self):
+        return self._cat_state
+
+    @cat_state.setter
+    def cat_state(self, value):
+        self._cat_state = value
+
+    @property
+    def focus_sessions_in_cycle(self):
+        return self._focus_sessions_in_cycle
+
+    @focus_sessions_in_cycle.setter
+    def focus_sessions_in_cycle(self, value):
+        self._focus_sessions_in_cycle = value
+
+    @property
+    def timer_after_id(self):
+        return self._timer_after_id
+
+    @timer_after_id.setter
+    def timer_after_id(self, value):
+        self._timer_after_id = value
+
+    @property
+    def current_duration(self):
+        return self._current_duration
+
+    @current_duration.setter
+    def current_duration(self, value):
+        self._current_duration = value
+
     def load_settings(self):
+        # Load settings from JSON or create defaults
         try:
             if os.path.exists('pomodoro_settings.json'):
                 with open('pomodoro_settings.json', 'r') as f:
@@ -116,6 +195,7 @@ class PomodoroTimer(Timer):
         self.settings['task_complete_sound'] = self.settings.get('task_complete_sound') or os.path.join(default_folder, "complete.mp3")
 
     def create_default_settings(self):
+        # Set default settings for the timer
         self.settings = {
             'focus_time': 25,
             'break_time': 5,
@@ -128,10 +208,12 @@ class PomodoroTimer(Timer):
         }
 
     def save_settings(self):
+        # Save current settings to JSON file
         with open('pomodoro_settings.json', 'w') as f:
             json.dump(self.settings, f)
 
     def setup_ui(self):
+        # Build the main UI layout and widgets
         # Create main frames
         self.top_frame = tk.Frame(self.root, bg='#f5f5f5')
         self.top_frame.pack(pady=20)
@@ -236,6 +318,7 @@ class PomodoroTimer(Timer):
         
 
     def update_cycle_display(self):
+        # Update the label showing the current Pomodoro/break cycle
         if self.is_focus:
             current_focus = (self.focus_sessions_in_cycle % 4) + 1
             self.cycle_label.config(text=f"Focus Session {current_focus}/4")
@@ -246,6 +329,7 @@ class PomodoroTimer(Timer):
                 self.cycle_label.config(text="Short Break Time")
 
     def set_cat_state(self, state):
+        # Change the cat image based on state (normal, sleeping, happy)
         if state == "normal":
             self.cat_canvas.itemconfig(self.cat_image_id, image=self.cat_normal)
         elif state == "sleeping":
@@ -255,6 +339,7 @@ class PomodoroTimer(Timer):
         self.cat_state = state
 
     def add_task(self):
+        # Open a dialog to add a new task to the list
         task_window = tk.Toplevel(self.root)
         task_window.title("Add Task")
         task_window.geometry("400x150")  
@@ -265,6 +350,7 @@ class PomodoroTimer(Timer):
         task_entry.focus_set()
 
         def save_task():
+            # Save the new task and close the dialog
             task = task_entry.get().strip()
             if task:
                 self.tasks.append(task)
@@ -283,7 +369,7 @@ class PomodoroTimer(Timer):
         self.root.wait_window(task_window)
 
     def delete_task(self):
-
+        # Delete the selected task from the list
         if not self.tasks:  # Check if task list is empty
             messagebox.showwarning("No Tasks", "There are no tasks to delete!")
             return
@@ -313,6 +399,7 @@ class PomodoroTimer(Timer):
             self.current_task = ""
 
     def clear_tasks(self):
+        # Remove all tasks from the list after confirmation
         if not self.tasks:  # Check if task list is empty
             messagebox.showwarning("No Tasks", "There are no tasks to clear!")
             return
@@ -324,8 +411,18 @@ class PomodoroTimer(Timer):
 
 
     def start_timer(self):
-        # For focus sessions, ensure a task is selected
+        # Start the Pomodoro timer, checking for valid task selection
+        if self.timer_after_id:
+            self.root.after_cancel(self.timer_after_id)
+            self.timer_after_id = None
+
+        if not self.is_running:
+            super().start()  # sets self.is_running = True
+            self.start_button.config(state=tk.DISABLED)
+            self.pause_button.config(state=tk.NORMAL)
+
         if self.is_focus:
+            # For focus sessions, ensure a task is selected
             selected_indices = self.task_listbox.curselection()
             if not selected_indices:
                 messagebox.showwarning("No Task", "Please select or add a task first!")
@@ -341,28 +438,22 @@ class PomodoroTimer(Timer):
             # Set current task
             self.current_task = selected_task
 
-            if self.timer_after_id:
-                self.root.after_cancel(self.timer_after_id)
-                self.timer_after_id = None
+            # Play focus sound & set cat state
+            if self.settings['focus_sound']:
+                Thread(target=self.play_sound, args=(self.settings['focus_sound'],)).start()
+            self.set_cat_state("sleeping")
 
-            if not self.is_running:
-                super().start()  # sets self.is_running = True
-                self.start_button.config(state=tk.DISABLED)
-                self.pause_button.config(state=tk.NORMAL)
-
-            # Handle sounds and cat states
-            if self.is_focus:
-                if self.settings['focus_sound']:
-                    Thread(target=self.play_sound, args=(self.settings['focus_sound'],)).start()
-                self.set_cat_state("sleeping")
-            else:
-                if self.settings['break_sound']:
-                    Thread(target=self.play_sound, args=(self.settings['break_sound'],)).start()
+        else:
+            # Break mode — no task required
+            if self.settings['break_sound']:
+                Thread(target=self.play_sound, args=(self.settings['break_sound'],)).start()
                 self.set_cat_state("normal")
 
+        # Start ticking
         self.update_timer()
 
     def pause_timer(self):
+        # Pause the timer and update button states
         if self.is_running:
             super().pause()
             self.start_button.config(state=tk.NORMAL)
@@ -370,6 +461,7 @@ class PomodoroTimer(Timer):
             winsound.PlaySound(None, winsound.SND_PURGE)
 
     def skip_timer(self):
+        # Skip the current timer phase, optionally marking task complete
         selected_indices = self.task_listbox.curselection()
         if self.is_focus and not selected_indices:
             messagebox.showwarning("No Task", "Please select or add a task first!")
@@ -399,6 +491,7 @@ class PomodoroTimer(Timer):
         self.pause_button.config(state=tk.DISABLED)
 
     def reset_timer(self):
+        # Reset the timer to the start of the current phase
         # Cancel any running timer loop
         if self.timer_after_id:
             self.root.after_cancel(self.timer_after_id)
@@ -421,6 +514,7 @@ class PomodoroTimer(Timer):
         self.pause_button.config(state=tk.DISABLED)
 
     def update_timer(self):
+        # Update the timer countdown every second
         if self._remaining_time > 0 and self.is_running:
             self._remaining_time -= 1 
             mins, secs = divmod(self._remaining_time, 60)
@@ -430,6 +524,7 @@ class PomodoroTimer(Timer):
             self.timer_complete()
 
     def mark_task_complete(self):
+        # Mark the selected task as complete and award coins
         selected_indices = self.task_listbox.curselection()
         if not selected_indices:
             messagebox.showwarning("No Task Selected", "Please select a task to mark as complete!")
@@ -459,12 +554,14 @@ class PomodoroTimer(Timer):
         self.coin_label.config(text=f"Coins: {self.coins}")
     
         # Show happy cat briefly
-        self.set_cat_state("happy")
-        self.root.after(2000, lambda: self.set_cat_state("happy"))
+        def show_happy_cat():
+            self.set_cat_state("happy")
+            self.root.after(2000, show_happy_cat)
     
         messagebox.showinfo("Task Complete!", f"Task marked as complete! You earned {coins_earned} coins!")
 
     def timer_complete(self):
+        # Handle logic when the timer reaches zero
         self.is_running = False
 
         if self.is_focus:
@@ -478,6 +575,7 @@ class PomodoroTimer(Timer):
         self.pause_button.config(state=tk.DISABLED)
 
     def complete_focus_session(self):
+        # Complete a focus session, award coins, and select next task
         # Increment total Pomodoro count only
         self.pomodoro_count += 1
 
@@ -506,6 +604,7 @@ class PomodoroTimer(Timer):
             messagebox.showinfo("No Tasks Left", "All tasks are complete! Please add a new one.")
 
     def next_phase(self):
+        # Switch between focus, short break, and long break phases
         if self.is_focus:
             # End of focus session → increment cycle counter
             self.focus_sessions_in_cycle += 1
@@ -547,30 +646,40 @@ class PomodoroTimer(Timer):
         self.update_cycle_display()
 
     def update_display(self):
+        # Update the timer display label
         mins, secs = divmod(self._remaining_time, 60)
         self.clock_label.config(text=f"{mins:02d}:{secs:02d}")
 
     def save_timer_settings(self):
+        # Save timer settings from the settings dialog
         try:
-            focus_time = int(self.focus_entry.get())
-            break_time = int(self.break_entry.get())
-            long_break = int(self.long_break_entry.get())
+            # Read values from entry boxes
+            focus = int(self.focus_entry.get())
+            brk = int(self.break_entry.get())
+            long_brk = int(self.long_break_entry.get())
 
-            if focus_time < 1 or break_time < 1 or long_break < 1:
-                raise ValueError("Times must be at least 1 minute")
+            # Update settings (store minutes, not seconds)
+            self.settings['focus_time'] = focus
+            self.settings['break_time'] = brk
+            self.settings['long_break_time'] = long_brk
 
-            self.settings['focus_time'] = focus_time
-            self.settings['break_time'] = break_time
-            self.settings['long_break_time'] = long_break
+            # Update current timer duration (in seconds)
+            if self.is_focus:
+                self.duration = focus * 60
+            else:
+                self.duration = brk * 60
 
-            self.save_settings()
-            self.is_focus = True     
-            self.reset_timer() 
-            messagebox.showinfo("Settings Saved", "Settings have been saved successfully!")
-        except Exception as e:
-            messagebox.showerror("Invalid Input", str(e))
+            self._remaining_time = self.duration  # reset countdown
+            self.update_display()
+            self.save_settings()  # write to JSON 
+        
+            messagebox.showinfo("Success", "Timer settings saved successfully!")
+
+        except ValueError:
+            messagebox.showerror("Invalid Input", "Please enter numbers only.")
 
     def set_sound(self, sound_type):
+        # Set a custom sound for focus, break, or completion
         file_path = filedialog.askopenfilename(title=f"Select {sound_type.replace('_', ' ')}",
                                                filetypes=(("Mp3 files", "*.mp3"), ("All files", "*.*")))
         if file_path:
@@ -592,6 +701,7 @@ class PomodoroTimer(Timer):
                 messagebox.showerror("Error", f"Could not save sound: {e}")
 
     def play_sound(self, sound_file):
+        # Play a sound file using pygame
         try:
             if sound_file:  
                 pygame.mixer.init()
@@ -601,12 +711,14 @@ class PomodoroTimer(Timer):
             print(f"Error playing sound: {e}")
 
     def open_music_app(self):
+        # Open YouTube Music in the browser
         choice = messagebox.askyesno("Music Apps",
                                      "Would you like to open Youtube music?\nRequires internet connection.")
         if choice:
             webbrowser.open("https://music.youtube.com/")
 
     def open_cat_shop(self):
+        # Open the cat shop window to buy items with coins
         shop_window = tk.Toplevel(self.root)
         shop_window.title("Cat Shop")
         shop_window.geometry("400x400")
@@ -624,6 +736,11 @@ class PomodoroTimer(Timer):
         item_frame = tk.Frame(shop_window)
         item_frame.pack(pady=10)
 
+        def make_buy_command(item):
+            def buy():
+                self.buy_item(item)
+            return buy
+
         for item in items:
             item_row = tk.Frame(item_frame)
             item_row.pack(fill=tk.X, pady=5)
@@ -631,11 +748,12 @@ class PomodoroTimer(Timer):
                      width=25, anchor=tk.W).pack(side=tk.LEFT)
 
             state = tk.NORMAL if self.coins >= item['price'] else tk.DISABLED
-            ttk.Button(item_row, text="Buy", command=lambda i=item: self.buy_item(i), state=state).pack(side=tk.RIGHT)
+            ttk.Button(item_row, text="Buy", command=make_buy_command(item), state=state).pack(side=tk.RIGHT)
 
         ttk.Button(shop_window, text="Close", command=shop_window.destroy).pack(pady=10)
 
     def buy_item(self, item):
+        # Buy an item for the cat if enough coins
         if self.coins >= item['price']:
             self.coins -= item['price']
             self.settings['coins'] = self.coins
@@ -648,11 +766,14 @@ class PomodoroTimer(Timer):
 
             # Show happy cat for 3s then go back
             self.set_cat_state("happy")
-            self.root.after(3000, lambda: self.set_cat_state("normal" if not self.is_focus else "sleeping"))
+            def reset_cat_state():
+                self.set_cat_state("normal" if not self.is_focus else "sleeping")
+            self.root.after(3000, reset_cat_state)
         else:
             messagebox.showerror("Not Enough Coins", "You don't have enough coins to buy this item!")
 
     def open_sound_settings(self):
+        # Open the sound settings dialog
         sound_window = tk.Toplevel(self.root)
         sound_window.title("Sound Settings")
         sound_window.geometry("400x200")
@@ -660,22 +781,31 @@ class PomodoroTimer(Timer):
 
         tk.Label(sound_window, text="Sound Settings", font=('Arial', 16, 'bold'), bg='#f5f5f5').pack(pady=10)
 
+        # Define button commands as inner functions to access self
+        def set_focus_sound():
+            self.set_sound('focus_sound')
+        def set_break_sound():
+            self.set_sound('break_sound')
+        def set_completion_sound():
+            self.set_sound('task_complete_sound')
+
         # Focus sound
-        ttk.Button(sound_window, text=f"Set Focus Sound",
-               command=lambda: self.set_sound('focus_sound')).pack(pady=5)
+        ttk.Button(sound_window, text="Set Focus Sound",
+                   command=set_focus_sound).pack(pady=5)
 
         # Break sound
-        ttk.Button(sound_window, text=f"Set Break Sound",
-               command=lambda: self.set_sound('break_sound')).pack(pady=5)
+        ttk.Button(sound_window, text="Set Break Sound",
+                   command=set_break_sound).pack(pady=5)
 
         # Completion/long break sound
-        ttk.Button(sound_window, text=f"Set Completion Sound ",
-               command=lambda: self.set_sound('task_complete_sound')).pack(pady=5)
+        ttk.Button(sound_window, text="Set Completion Sound ",
+                   command=set_completion_sound).pack(pady=5)
 
         # Connect to Music App
         ttk.Button(sound_window, text="Connect to Music App", command=self.open_music_app).pack(pady=10)
 
     def open_timer_settings(self):
+    # Timer settings window
         settings_window = tk.Toplevel(self.root)
         settings_window.title("Timer Settings")
         settings_window.geometry("400x250")
@@ -683,49 +813,25 @@ class PomodoroTimer(Timer):
 
         tk.Label(settings_window, text="Timer Settings", font=('Arial', 16, 'bold'), bg='#f5f5f5').pack(pady=10)
 
-        timer_setting_frame = tk.Frame(settings_window, bg='#f5f5f5')
-        timer_setting_frame.pack(pady=10)
+        form_frame = tk.Frame(settings_window, bg='#f5f5f5')
+        form_frame.pack(pady=10)
 
-        # Focus Time
-        tk.Label(timer_setting_frame, text="Focus Time (min):", bg='#f5f5f5').grid(row=0, column=0, padx=5, pady=5, sticky="w")
-        focus_entry = ttk.Entry(timer_setting_frame, width=5)
-        focus_entry.insert(0, str(self.settings['focus_time']))
-        focus_entry.grid(row=0, column=1, padx=5, pady=5)
+        tk.Label(form_frame, text="Focus Time (minutes):", bg='#f5f5f5').grid(row=0, column=0, sticky="e", padx=5, pady=5)
+        self.focus_entry = ttk.Entry(form_frame)  
+        self.focus_entry.insert(0, str(self.settings['focus_time']))
+        self.focus_entry.grid(row=0, column=1, padx=5, pady=5)
 
-        # Break Time
-        tk.Label(timer_setting_frame, text="Break Time (min):", bg='#f5f5f5').grid(row=1, column=0, padx=5, pady=5, sticky="w")
-        break_entry = ttk.Entry(timer_setting_frame, width=5)
-        break_entry.insert(0, str(self.settings['break_time']))
-        break_entry.grid(row=1, column=1, padx=5, pady=5)
+        tk.Label(form_frame, text="Break Time (minutes):", bg='#f5f5f5').grid(row=1, column=0, sticky="e", padx=5, pady=5)
+        self.break_entry = ttk.Entry(form_frame)  
+        self.break_entry.insert(0, str(self.settings['break_time']))
+        self.break_entry.grid(row=1, column=1, padx=5, pady=5)
 
-        # Long Break Time
-        tk.Label(timer_setting_frame, text="Long Break (min):", bg='#f5f5f5').grid(row=2, column=0, padx=5, pady=5, sticky="w")
-        long_break_entry = ttk.Entry(timer_setting_frame, width=5)
-        long_break_entry.insert(0, str(self.settings['long_break_time']))
-        long_break_entry.grid(row=2, column=1, padx=5, pady=5)
+        tk.Label(form_frame, text="Long Break Time (minutes):", bg='#f5f5f5').grid(row=2, column=0, sticky="e", padx=5, pady=5)
+        self.long_break_entry = ttk.Entry(form_frame)  
+        self.long_break_entry.insert(0, str(self.settings['long_break_time']))
+        self.long_break_entry.grid(row=2, column=1, padx=5, pady=5)
 
-        def save_and_close():
-            try:
-                focus_time = int(focus_entry.get())
-                break_time = int(break_entry.get())
-                long_break = int(long_break_entry.get())
-
-                if focus_time < 1 or break_time < 1 or long_break < 1:
-                    raise ValueError("Times must be at least 1 minute")
-
-                self.settings['focus_time'] = focus_time
-                self.settings['break_time'] = break_time
-                self.settings['long_break_time'] = long_break
-
-                self.save_settings()
-                self.is_focus = True
-                self.reset_timer()
-                messagebox.showinfo("Settings Saved", "Timer settings updated successfully!")
-                settings_window.destroy()
-            except Exception as e:
-                messagebox.showerror("Invalid Input", "Please enter numbers only.")
-
-        ttk.Button(settings_window, text="Save Settings", command=save_and_close).pack(pady=15)
+        ttk.Button(settings_window, text="Save Settings", command=self.save_timer_settings).pack(pady=10)
 
     def center_window(self, width, height):
         screen_width = self.root.winfo_screenwidth()
