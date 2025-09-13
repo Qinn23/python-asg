@@ -1,27 +1,54 @@
 [
   {
+    "subject": "Itachi",
+    "title": "Sharingan",
+    "description": "",
+    "due_date": "2025-07-16",
+    "status": "Completed"
+  },
+  {
     "subject": "English",
+    "title": "Nothing Beats a jet2 Holiday",
+    "description": "",
+    "due_date": "2025-08-08",
+    "status": "Pending",
+    "time_required": 120,
+    "timed": true
+  },
+  {
+    "subject": "Japanese",
     "title": "Demon Slayer",
-    "description": "Muzan is the bad villain",
+    "description": "",
     "due_date": "2025-08-14",
+    "status": "Completed",
+    "time_required": 150,
+    "timed": true
+  },
+  {
+    "subject": "English",
+    "title": "Giyuu",
+    "description": "handsome guy",
+    "due_date": "2025-08-23",
     "status": "Completed",
     "time_required": 55,
     "timed": true
   },
   {
-    "subject": "Math",
-    "title": "ok",
+    "subject": "Japanese",
+    "title": "Akaza",
     "description": "",
-    "due_date": "2022-10-16",
+    "due_date": "2025-10-10",
     "status": "Pending",
-    "time_required": 36,
+    "time_required": 22,
     "timed": true
   },
   {
-    "subject": "japanese",
-    "title": "Demon Slayer",
-    "description": "",
-    "due_date": "2025-10-10",
-    "status": "Completed"
+    "subject": "English",
+    "title": "Where our blue is",
+    "description": "satoru gojo is the strongest person",
+    "due_date": "2025-11-13",
+    "status": "Completed",
+    "time_required": 33,
+    "timed": true
   }
 ]

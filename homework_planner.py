@@ -1,12 +1,13 @@
-import json
-import os
-import datetime
-import tkinter as tk
-from tkinter import ttk, messagebox
-from tkinter.font import Font
+import json  # For saving/loading homework data
+import os    # For file existence checks
+import datetime  # For date handling
+import tkinter as tk  # GUI library
+from tkinter import ttk, messagebox  # For themed widgets and dialogs
+from tkinter.font import Font  # For font customization
 
 class Homework:
     def __init__(self, subject, title, description, due_date, status):
+		# Access is controlled using property getters and setters.
         self._subject = subject
         self._title = title
         self._description = description
@@ -85,7 +86,7 @@ class TimedHomework(Homework):
     @time_required.setter
     def time_required(self, value):
         self._time_required = value
-
+    
     def to_dict(self):
         d = super().to_dict()
         d['time_required'] = self._time_required
@@ -103,7 +104,6 @@ class TimedHomework(Homework):
             d.get('time_required', 0)
         )
 
-	
 class HomeworkPlannerApp:
 	HOMEWORK_FILE = "homework_data.json"
 
@@ -115,11 +115,13 @@ class HomeworkPlannerApp:
 		self.load_homework_data()
 
 	def open_homework_planner_window(self):
+		# Create the homework planner window
 		hw_win = tk.Toplevel(self.master) if self.master else tk.Toplevel()
 		hw_win.title("Homework Planner")
 		hw_win.geometry("800x450")
 		tk.Label(hw_win, text="Homework Planner", font=("Segoe UI", 16, "bold")).pack(pady=10)
 
+		# Search bar
 		search_frame = tk.Frame(hw_win)
 		search_frame.pack(fill='x', padx=10, pady=(0, 5))
 		tk.Label(search_frame, text="Search:").pack(side='left')
@@ -127,6 +129,7 @@ class HomeworkPlannerApp:
 		search_entry = tk.Entry(search_frame, textvariable=search_var)
 		search_entry.pack(side='left', fill='x', expand=True, padx=(5, 0))
 
+		# Table columns
 		columns = ("Select", "Subject", "Title", "Due Date", "Status", "Time Required")
 		tree = ttk.Treeview(hw_win, columns=columns, show='headings', selectmode='none')
 		tree.heading("Select", text="☐", anchor='center')
@@ -141,7 +144,7 @@ class HomeworkPlannerApp:
 		# Add sorting by due date
 		self._due_date_sort_asc = True
 		def sort_by_due_date():
-			# Sort the homework list by due date
+			# Sort the homework list by due date (ascending/descending)
 			try:
 				self.homework_list.sort(
 					key=lambda hw: datetime.datetime.strptime(hw.due_date, "%Y-%m-%d"),
@@ -162,14 +165,18 @@ class HomeworkPlannerApp:
 		tree.column("Time Required", width=130, anchor='center')
 		tree.pack(fill='both', expand=True, padx=10, pady=10)
 
-		tk.Label(hw_win, text="Tip: Double-click a row (not the checkbox) to view its description.", fg="red").pack(pady=(0, 5))
+		# Info labels
+		tk.Label(hw_win, text="Tip: Double-click a row (not the checkbox) to view its description.", fg="red").pack(pady=(0, 2))
+		tk.Label(hw_win, text="Tip: Click the 'Due Date' column title to sort by due date.", fg="blue").pack(pady=(0, 5))
 
+		# Table click handler (checkbox/select row)
 		def on_tree_click(event):
 			region = tree.identify("region", event.x, event.y)
 			col = tree.identify_column(event.x)
 			row = tree.identify_row(event.y)
 			if region == "cell":
 				if col == "#1":
+					# Checkbox column
 					if row:
 						idx = int(row)
 						if idx in self.checked_rows:
@@ -178,6 +185,7 @@ class HomeworkPlannerApp:
 							self.checked_rows.add(idx)
 						self.refresh_homework(tree, search_var.get())
 				else:
+					# Select row for editing
 					if row:
 						idx = int(row)
 						self.selected_edit_row['idx'] = idx
@@ -192,6 +200,7 @@ class HomeworkPlannerApp:
 		tree.bind("<Button-1>", on_tree_click)
 		tree.tag_configure('selected', background='#cce5ff')
 
+		# Double-click handler to show description
 		def on_tree_double_click(event):
 			region = tree.identify("region", event.x, event.y)
 			col = tree.identify_column(event.x)
@@ -203,12 +212,14 @@ class HomeworkPlannerApp:
 				messagebox.showinfo("Homework Description", desc)
 		tree.bind("<Double-1>", on_tree_double_click)
 
+		# Search bar handler
 		def on_search(*args):
 			self.refresh_homework(tree, search_var.get())
 		search_var.trace_add('write', on_search)
 
 		self.refresh_homework(tree)
 
+		# Button frame and style
 		btn_frame = tk.Frame(hw_win, bg="#f5f6fa")
 		btn_frame.pack(pady=10)
 
@@ -231,6 +242,7 @@ class HomeworkPlannerApp:
 			relief=[('pressed', 'groove'), ('!pressed', 'flat')]
 		)
 
+		# Add/Edit/Delete buttons
 		btn_add = ttk.Button(btn_frame, text="Add Homework", style='Modern.TButton', command=lambda: self.open_add_homework(tree))
 		btn_edit = ttk.Button(btn_frame, text="Edit Homework", style='Modern.TButton', command=lambda: self.open_edit_homework(tree))
 		btn_delete = ttk.Button(btn_frame, text="Delete Homework", style='Modern.TButton', command=lambda: self.delete_homework(tree))
@@ -258,10 +270,12 @@ class HomeworkPlannerApp:
 				tree.insert('', 'end', iid=idx, values=(checked, hw.subject, hw.title, hw.due_date, hw.status, time_required), tags=(row_tag,))
 
 	def open_add_homework(self, tree):
+		#Open a window to add a new homework entry.
 		add_win = tk.Toplevel(self.master) if self.master else tk.Toplevel()
 		add_win.title("Add Homework")
 		add_win.geometry("350x400")
 
+		# Entry fields for homework details
 		tk.Label(add_win, text="Subject:").pack(anchor='w', padx=10, pady=(10,0))
 		subject_entry = tk.Entry(add_win)
 		subject_entry.pack(fill='x', padx=10)
@@ -283,6 +297,7 @@ class HomeworkPlannerApp:
 		status_menu = ttk.Combobox(add_win, textvariable=status_var, values=["Pending", "Completed"], state="readonly")
 		status_menu.pack(fill='x', padx=10)
 
+		# Timed homework option
 		is_timed_var = tk.BooleanVar()
 		timed_frame = tk.Frame(add_win)
 		timed_frame.pack(fill='x', padx=10, pady=(10,0))
@@ -291,6 +306,7 @@ class HomeworkPlannerApp:
 		time_required_entry = tk.Spinbox(add_win, from_=1, to=1440, width=10)
 
 		def toggle_timed():
+			# Show/hide time required field
 			if is_timed_var.get():
 				time_required_label.pack(anchor='w', padx=10, pady=(10,0))
 				time_required_entry.pack(fill='x', padx=10)
@@ -324,6 +340,7 @@ class HomeworkPlannerApp:
 		add_win.destroy()
 
 	def open_edit_homework(self, tree):
+		# Open a window to edit the selected homework entry.
 		idx = self.selected_edit_row.get('idx')
 		if idx is None or not isinstance(idx, int) or idx < 0 or idx >= len(self.homework_list):
 			messagebox.showwarning("No selection", "Please click a row (not the checkbox) to select a homework entry to edit.")
@@ -334,6 +351,7 @@ class HomeworkPlannerApp:
 		edit_win.title("Edit Homework")
 		edit_win.geometry("350x400")
 
+		# Entry fields for editing
 		tk.Label(edit_win, text="Subject:").pack(anchor='w', padx=10, pady=(10,0))
 		subject_entry = tk.Entry(edit_win)
 		subject_entry.insert(0, hw.subject)
@@ -359,6 +377,7 @@ class HomeworkPlannerApp:
 		status_menu = ttk.Combobox(edit_win, textvariable=status_var, values=["Pending", "Completed"], state="readonly")
 		status_menu.pack(fill='x', padx=10)
 
+		# Timed homework option
 		is_timed_var = tk.BooleanVar(value=isinstance(hw, TimedHomework))
 		timed_frame = tk.Frame(edit_win)
 		timed_frame.pack(fill='x', padx=10, pady=(10,0))
@@ -373,6 +392,7 @@ class HomeworkPlannerApp:
 			time_required_entry.insert(0, 30)
 
 		def toggle_timed():
+			# Show/hide time required field
 			if is_timed_var.get():
 				time_required_label.pack(anchor='w', padx=10, pady=(10,0))
 				time_required_entry.pack(fill='x', padx=10)
@@ -451,6 +471,7 @@ class HomeworkPlannerApp:
 			self.homework_list = []
 
 
+# Run the app if this file is executed directly
 if __name__ == "__main__":
     root = tk.Tk()
     root.withdraw()
