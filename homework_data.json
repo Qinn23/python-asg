@@ -1,1 +1,27 @@
-[]
+[
+  {
+    "subject": "English",
+    "title": "Demon Slayer",
+    "description": "Muzan is the bad villain",
+    "due_date": "2025-08-14",
+    "status": "Completed",
+    "time_required": 55,
+    "timed": true
+  },
+  {
+    "subject": "Math",
+    "title": "ok",
+    "description": "",
+    "due_date": "2022-10-16",
+    "status": "Pending",
+    "time_required": 36,
+    "timed": true
+  },
+  {
+    "subject": "japanese",
+    "title": "Demon Slayer",
+    "description": "",
+    "due_date": "2025-10-10",
+    "status": "Completed"
+  }
+]

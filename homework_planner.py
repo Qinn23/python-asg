@@ -6,41 +6,104 @@ from tkinter import ttk, messagebox
 from tkinter.font import Font
 
 class Homework:
-	def __init__(self, subject, title, description, due_date, status):
-		self.subject = subject
-		self.title = title
-		self.description = description
-		self.due_date = due_date
-		self.status = status
+    def __init__(self, subject, title, description, due_date, status):
+        self._subject = subject
+        self._title = title
+        self._description = description
+        self._due_date = due_date
+        self._status = status
 
-	def to_dict(self):
-		return {
-			'subject': self.subject,
-			'title': self.title,
-			'description': self.description,
-			'due_date': self.due_date,
-			'status': self.status
-		}
+    # subject
+    @property
+    def subject(self):
+        return self._subject
 
-	@classmethod
-	def from_dict(cls, d):
-		return cls(d['subject'], d['title'], d['description'], d['due_date'], d['status'])
+    @subject.setter
+    def subject(self, value):
+        self._subject = value
+
+    # title
+    @property
+    def title(self):
+        return self._title
+
+    @title.setter
+    def title(self, value):
+        self._title = value
+
+    # description
+    @property
+    def description(self):
+        return self._description
+
+    @description.setter
+    def description(self, value):
+        self._description = value
+
+    # due_date
+    @property
+    def due_date(self):
+        return self._due_date
+
+    @due_date.setter
+    def due_date(self, value):
+        self._due_date = value
+
+    # status
+    @property
+    def status(self):
+        return self._status
+
+    @status.setter
+    def status(self, value):
+        self._status = value
+
+    def to_dict(self):
+        return {
+            'subject': self._subject,
+            'title': self._title,
+            'description': self._description,
+            'due_date': self._due_date,
+            'status': self._status
+        }
+
+    @classmethod
+    def from_dict(cls, d):
+        return cls(d['subject'], d['title'], d['description'], d['due_date'], d['status'])
+
 
 class TimedHomework(Homework):
-	def __init__(self, subject, title, description, due_date, status, time_required):
-		super().__init__(subject, title, description, due_date, status)
-		self.time_required = time_required
+    def __init__(self, subject, title, description, due_date, status, time_required):
+        super().__init__(subject, title, description, due_date, status)
+        self._time_required = time_required
 
-	def to_dict(self):
-		d = super().to_dict()
-		d['time_required'] = self.time_required
-		d['timed'] = True
-		return d
+    # time_required
+    @property
+    def time_required(self):
+        return self._time_required
 
-	@classmethod
-	def from_dict(cls, d):
-		return cls(d['subject'], d['title'], d['description'], d['due_date'], d['status'], d.get('time_required', 0))
+    @time_required.setter
+    def time_required(self, value):
+        self._time_required = value
 
+    def to_dict(self):
+        d = super().to_dict()
+        d['time_required'] = self._time_required
+        d['timed'] = True
+        return d
+
+    @classmethod
+    def from_dict(cls, d):
+        return cls(
+            d['subject'],
+            d['title'],
+            d['description'],
+            d['due_date'],
+            d['status'],
+            d.get('time_required', 0)
+        )
+
+	
 class HomeworkPlannerApp:
 	HOMEWORK_FILE = "homework_data.json"
 
@@ -181,17 +244,8 @@ class HomeworkPlannerApp:
 		tree.tag_configure('pending', background='#ffe066')    # golden yellow
 		for row in tree.get_children():
 			tree.delete(row)
-		# Always sort by due date (soonest first)
-		try:
-			sorted_homework = sorted(
-				self.homework_list,
-				key=lambda hw: datetime.datetime.strptime(hw.due_date, "%Y-%m-%d")
-			)
-		except Exception:
-			# Fallback to string sort if any date is invalid
-			sorted_homework = sorted(self.homework_list, key=lambda hw: hw.due_date)
 		filter_text = filter_text.lower()
-		for idx, hw in enumerate(sorted_homework):
+		for idx, hw in enumerate(self.homework_list):
 			if (
 				filter_text in hw.subject.lower() or
 				filter_text in hw.title.lower()
@@ -200,7 +254,6 @@ class HomeworkPlannerApp:
 				time_required = ''
 				if isinstance(hw, TimedHomework):
 					time_required = str(hw.time_required)
-				# Assign tag based on status
 				row_tag = 'completed' if hw.status.lower() == 'completed' else 'pending'
 				tree.insert('', 'end', iid=idx, values=(checked, hw.subject, hw.title, hw.due_date, hw.status, time_required), tags=(row_tag,))
 
