@@ -7,65 +7,65 @@ from tkinter.font import Font  # For font customization
 
 class Homework:
     def __init__(self, subject, title, description, due_date, status):
-		# Access is controlled using property getters and setters.
-        self._subject = subject
-        self._title = title
-        self._description = description
-        self._due_date = due_date
-        self._status = status
+        # Access is controlled using property getters and setters.
+        self.__subject = subject
+        self.__title = title
+        self.__description = description
+        self.__due_date = due_date
+        self.__status = status
 
     # subject
     @property
     def subject(self):
-        return self._subject
+        return self.__subject
 
     @subject.setter
     def subject(self, value):
-        self._subject = value
+        self.__subject = value
 
     # title
     @property
     def title(self):
-        return self._title
+        return self.__title
 
     @title.setter
     def title(self, value):
-        self._title = value
+        self.__title = value
 
     # description
     @property
     def description(self):
-        return self._description
+        return self.__description
 
     @description.setter
     def description(self, value):
-        self._description = value
+        self.__description = value
 
     # due_date
     @property
     def due_date(self):
-        return self._due_date
+        return self.__due_date
 
     @due_date.setter
     def due_date(self, value):
-        self._due_date = value
+        self.__due_date = value
 
     # status
     @property
     def status(self):
-        return self._status
+        return self.__status
 
     @status.setter
     def status(self, value):
-        self._status = value
+        self.__status = value
 
     def to_dict(self):
         return {
-            'subject': self._subject,
-            'title': self._title,
-            'description': self._description,
-            'due_date': self._due_date,
-            'status': self._status
+            'subject': self.__subject,
+            'title': self.__title,
+            'description': self.__description,
+            'due_date': self.__due_date,
+            'status': self.__status
         }
 
     @classmethod
@@ -76,20 +76,20 @@ class Homework:
 class TimedHomework(Homework):
     def __init__(self, subject, title, description, due_date, status, time_required):
         super().__init__(subject, title, description, due_date, status)
-        self._time_required = time_required
+        self.__time_required = time_required
 
     # time_required
     @property
     def time_required(self):
-        return self._time_required
+        return self.__time_required
 
     @time_required.setter
     def time_required(self, value):
-        self._time_required = value
+        self.__time_required = value
     
     def to_dict(self):
         d = super().to_dict()
-        d['time_required'] = self._time_required
+        d['time_required'] = self.__time_required
         d['timed'] = True
         return d
 
