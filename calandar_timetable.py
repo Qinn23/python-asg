@@ -69,7 +69,7 @@ class AssignmentEvent(BaseEvent):
 class TimetableEvent(BaseEvent):
     """Subclass for Timetable events"""
     def __init__(self, title, startTime, endTime):
-        super().__init__(title, "Timetable", f"{startTime}-{endTime}")
+        super().__init__(title, "Timetable", None)  # don't pass formatted string
         self.__startTime = startTime
         self.__endTime = endTime
 
@@ -86,6 +86,11 @@ class TimetableEvent(BaseEvent):
     @endTime.setter
     def endTime(self, value):
         self.__endTime = value
+
+    @property
+    def time(self):  
+        """Override parent property dynamically → no duplicate storage"""
+        return f"{self.__startTime}-{self.__endTime}"
 
     def toDict(self):
         base = super().toDict()
