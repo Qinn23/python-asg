@@ -104,7 +104,7 @@ class PomodoroTimer(Timer):
         # Setup UI
         self.setup_ui()
 
-    # Properties for protected variables
+    # Properties for private variables
     @property
     def is_focus(self):
         return self.__is_focus
