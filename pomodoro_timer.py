@@ -3,7 +3,6 @@ from tkinter import ttk, messagebox, filedialog
 import json
 import shutil
 import os
-import winsound
 import random
 from threading import Thread
 import pygame
@@ -458,7 +457,7 @@ class PomodoroTimer(Timer):
             super().pause()
             self.start_button.config(state=tk.NORMAL)
             self.pause_button.config(state=tk.DISABLED)
-            winsound.PlaySound(None, winsound.SND_PURGE)
+            pygame.mixer.music.stop()
 
     def skip_timer(self):
         # Skip the current timer phase, optionally marking task complete
@@ -658,6 +657,10 @@ class PomodoroTimer(Timer):
             brk = int(self.break_entry.get())
             long_brk = int(self.long_break_entry.get())
 
+            if focus <= 0 or brk <= 0 or long_brk <= 0:
+                messagebox.showerror("Invalid Input", "Times must be positive integers.")
+                return
+
             # Update settings (store minutes, not seconds)
             self.settings['focus_time'] = focus
             self.settings['break_time'] = brk
@@ -691,6 +694,10 @@ class PomodoroTimer(Timer):
                 filename = os.path.basename(file_path)
                 destination = os.path.join("Pomodoro_sounds", filename)
 
+                if os.path.exists(destination):
+                    if not messagebox.askyesno("Overwrite?", f"{filename} already exists. Overwrite it?"):
+                        return  
+                
                 shutil.copy(file_path, destination)
 
                 # Save the relative path in settings
