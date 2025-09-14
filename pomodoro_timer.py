@@ -88,18 +88,18 @@ class PomodoroTimer(Timer):
 
         # Initialize variables
         self.is_running = False
-        self._is_focus = True
-        self._remaining_time = self.settings['focus_time'] * 60
-        self._pomodoro_count = 0
-        self._coins = 10  # Starting coins
-        self._current_task = ""
-        self._tasks = [] 
-        self._cat_state = "normal"  # normal, sleeping, happy
-        self._focus_sessions_in_cycle = 0
+        self.__is_focus = True
+        self.__remaining_time = self.settings['focus_time'] * 60
+        self.__pomodoro_count = 0
+        self.__coins = 10  # Starting coins
+        self.__current_task = ""
+        self.__tasks = [] 
+        self.__cat_state = "normal"  # normal, sleeping, happy
+        self.__focus_sessions_in_cycle = 0
 
-        self._timer_after_id = None
-        self._current_duration = self.settings['focus_time'] * 60
-        self._remaining_time = self._current_duration
+        self.__timer_after_id = None
+        self.__current_duration = self.settings['focus_time'] * 60
+        self.__remaining_time = self.__current_duration
 
         # Setup UI
         self.setup_ui()
@@ -107,75 +107,75 @@ class PomodoroTimer(Timer):
     # Properties for protected variables
     @property
     def is_focus(self):
-        return self._is_focus
+        return self.__is_focus
 
     @is_focus.setter
     def is_focus(self, value):
-        self._is_focus = value
+        self.__is_focus = value
 
     @property
     def pomodoro_count(self):
-        return self._pomodoro_count
+        return self.__pomodoro_count
 
     @pomodoro_count.setter
     def pomodoro_count(self, value):
-        self._pomodoro_count = value
+        self.__pomodoro_count = value
 
     @property
     def coins(self):
-        return self._coins
+        return self.__coins
 
     @coins.setter
     def coins(self, value):
-        self._coins = value
+        self.__coins = value
 
     @property
     def current_task(self):
-        return self._current_task
+        return self.__current_task
 
     @current_task.setter
     def current_task(self, value):
-        self._current_task = value
+        self.__current_task = value
 
     @property
     def tasks(self):
-        return self._tasks
+        return self.__tasks
 
     @tasks.setter
     def tasks(self, value):
-        self._tasks = value
+        self.__tasks = value
 
     @property
     def cat_state(self):
-        return self._cat_state
+        return self.__cat_state
 
     @cat_state.setter
     def cat_state(self, value):
-        self._cat_state = value
+        self.__cat_state = value
 
     @property
     def focus_sessions_in_cycle(self):
-        return self._focus_sessions_in_cycle
+        return self.__focus_sessions_in_cycle
 
     @focus_sessions_in_cycle.setter
     def focus_sessions_in_cycle(self, value):
-        self._focus_sessions_in_cycle = value
+        self.__focus_sessions_in_cycle = value
 
     @property
     def timer_after_id(self):
-        return self._timer_after_id
+        return self.__timer_after_id
 
     @timer_after_id.setter
     def timer_after_id(self, value):
-        self._timer_after_id = value
+        self.__timer_after_id = value
 
     @property
     def current_duration(self):
-        return self._current_duration
+        return self.__current_duration
 
     @current_duration.setter
     def current_duration(self, value):
-        self._current_duration = value
+        self.__current_duration = value
 
     def load_settings(self):
         # Load settings from JSON or create defaults
