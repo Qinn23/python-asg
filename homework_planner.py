@@ -214,6 +214,7 @@ class HomeworkPlannerApp:
 
 		# Search bar handler
 		def on_search(*args):
+			# Filter the homework list based on search text
 			self.refresh_homework(tree, search_var.get())
 		search_var.trace_add('write', on_search)
 
@@ -449,6 +450,7 @@ class HomeworkPlannerApp:
 			self.refresh_homework(tree)
 
 	def save_homework_data(self):
+		# Save the homework list to a JSON file.
 		try:
 			with open(self.HOMEWORK_FILE, 'w') as f:
 				json.dump([hw.to_dict() for hw in self.homework_list], f, indent=2)
