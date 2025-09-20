@@ -351,15 +351,19 @@ class PomodoroTimer(Timer):
         def save_task():
             # Save the new task and close the dialog
             task = task_entry.get().strip()
-            if task:
-                self.tasks.append(task)
-                self.task_listbox.insert(tk.END, task)
-                last = self.task_listbox.size() - 1
-                self.task_listbox.selection_clear(0, tk.END)
-                self.task_listbox.selection_set(last)
-                self.task_listbox.see(last)
-                self.current_task = task
-                task_window.destroy()
+            if not task:
+                return
+            if any(task.lower() == t.lower().lstrip("✔ ").strip() for t in self.tasks):
+                messagebox.showwarning("Duplicate Task", "This task already exists!")
+                return
+            self.tasks.append(task)
+            self.task_listbox.insert(tk.END, task)
+            last = self.task_listbox.size() - 1
+            self.task_listbox.selection_clear(0, tk.END)
+            self.task_listbox.selection_set(last)
+            self.task_listbox.see(last)
+            self.current_task = task
+            task_window.destroy()
 
         ttk.Button(task_window, text="Add Task", command=save_task).pack(pady=10)
 
