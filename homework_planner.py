@@ -322,7 +322,11 @@ class HomeworkPlannerApp:
 	def add_homework(self, subject, title, description, due_date, status, tree, add_win, is_timed, time_required):
 		# Validate due date format
 		try:
-			datetime.datetime.strptime(due_date, "%Y-%m-%d")
+			due_dt = datetime.datetime.strptime(due_date, "%Y-%m-%d")
+			today = datetime.datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
+			if due_dt < today:
+				messagebox.showwarning("Input Error", "Due Date cannot be in the past.")
+				return
 		except ValueError:
 			messagebox.showwarning("Input Error", "Due Date must be in YYYY-MM-DD format and a valid date.")
 			return
@@ -414,7 +418,11 @@ class HomeworkPlannerApp:
 	def edit_homework(self, idx, subject, title, description, due_date, status, tree, edit_win, is_timed, time_required):
 		# Validate due date format
 		try:
-			datetime.datetime.strptime(due_date, "%Y-%m-%d")
+			due_dt = datetime.datetime.strptime(due_date, "%Y-%m-%d")
+			today = datetime.datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
+			if due_dt < today:
+				messagebox.showwarning("Input Error", "Due Date cannot be in the past.")
+				return
 		except ValueError:
 			messagebox.showwarning("Input Error", "Due Date must be in YYYY-MM-DD format and a valid date.")
 			return

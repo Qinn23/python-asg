@@ -98,12 +98,26 @@ class TimetableEvent(BaseEvent):
         base["endTime"] = self.__endTime
         return base
 
+#! changes
+class CollabEvent(BaseEvent):
+    """Subclass for Collaborative events"""
+    def __init__(self, title, time, participants=None):
+        super().__init__(title, "Collab", time)
+        self.__participants = participants if participants else []
 
-class OtherEvent(BaseEvent):
-    """Subclass for Other events"""
-    def __init__(self, title, time):
-        super().__init__(title, "Others", time)
+    @property
+    def participants(self):
+        return self.__participants
 
+    def addParticipant(self, name):
+        if not name.strip() or any(ch.isdigit() for ch in name):
+            raise ValueError("Invalid name")
+        self.__participants.append(name.strip())
+
+    def toDict(self):
+        base = super().toDict()
+        base["participants"] = self.__participants
+        return base
 
 # =========================================================================
 # ===== Main Calendar App ================================
@@ -126,7 +140,7 @@ class CalendarApp:
         self.categoryColors = {
             "Assignment": "#d68a8a",
             "Timetable": "#6cb287",
-            "Others": "#4eb5f0"
+            "Collab": "#4eb5f0"
         }
 
         # === Top Frame (Selection for Year/Month) ===
@@ -240,8 +254,9 @@ class CalendarApp:
                             text = f"{ev['time']} {ev['title']} ({ev.get('description','')})"
                         elif ev["category"] == "Timetable":
                             text = f"{ev.get('startTime','?')}-{ev.get('endTime','?')} {ev['title']}"
-                        else:
-                            text = f"{ev['time']} {ev['title']}"
+                        elif ev["category"] == "Collab":
+                            participants = ", ".join(ev.get("participants", []))
+                            text = f"{ev['time']} {ev['title']} [{participants}]"
 
                         label = tk.Label(frame, text=text,
                                          bg=self.categoryColors[ev["category"]], fg="white",
@@ -260,6 +275,7 @@ class CalendarApp:
             self.calendarFrame.grid_columnconfigure(i, weight=1)
         for i in range(len(monthCalendar) + 2):
             self.calendarFrame.grid_rowconfigure(i, weight=1)
+            
 
 
     # =================================================================================
@@ -330,11 +346,16 @@ class CalendarApp:
                 fields["start"] = startEntry
                 fields["end"] = endEntry
 
-            else:  # Others
+            elif categoryVar.get() == "Collab":
                 tk.Label(extraFrame, text="Time (HH:MM):", bg="#f8f9fa").pack(pady=2)
                 timeEntry = tk.Entry(extraFrame, width=25)
                 timeEntry.pack()
                 fields["time"] = timeEntry
+
+                tk.Label(extraFrame, text="Participants (eg: gan, ash):", bg="#f8f9fa").pack(pady=2)
+                participantsEntry = tk.Entry(extraFrame, width=25)
+                participantsEntry.pack()
+                fields["participants"] = participantsEntry
 
         categoryVar.trace("w", updateFields)
         updateFields()
@@ -343,14 +364,18 @@ class CalendarApp:
         if editMode and existing:
             titleEntry.insert(0, existing["title"])
             categoryVar.set(existing["category"])
+            updateFields()  # make sure fields exist for this category
+
             if existing["category"] == "Assignment":
                 fields["time"].insert(0, existing["time"])
                 fields["desc"].insert("1.0", existing.get("description", ""))
             elif existing["category"] == "Timetable":
                 fields["start"].insert(0, existing.get("startTime", ""))
                 fields["end"].insert(0, existing.get("endTime", ""))
-            else:
+            elif existing["category"] == "Collab":
                 fields["time"].insert(0, existing.get("time", ""))
+                participants = ", ".join(existing.get("participants", []))
+                fields["participants"].insert(0, participants)
 
         # === Save button ===
         def saveEvent():
@@ -394,14 +419,17 @@ class CalendarApp:
                     return
                 newEvent = TimetableEvent(title, startStr, endStr).toDict()
 
-            else:  # Others
+            elif category == "Collab":
                 timeStr = fields["time"].get().strip()
+                participantsStr = fields["participants"].get().strip()
                 try:
                     datetime.strptime(timeStr, "%H:%M")
                 except:
                     messagebox.showerror("Error", "Invalid time format! Use HH:MM.")
                     return
-                newEvent = OtherEvent(title, timeStr).toDict()
+
+                participants = [p.strip() for p in participantsStr.split(",") if p.strip()]
+                newEvent = CollabEvent(title, timeStr, participants).toDict()
 
             # Save into events list
             if editMode and eventIndex is not None:
@@ -473,8 +501,10 @@ class CalendarApp:
                     line = f"{date} | {ev['time']} | {ev['title']} ({ev.get('description','')})"
                 elif ev["category"] == "Timetable":
                     line = f"{date} | {ev.get('startTime','?')} - {ev.get('endTime','?')} | {ev['title']}"
-                else:
-                    line = f"{date} | {ev['time']} | {ev['title']}"
+                elif ev["category"] == "Collab":
+                    participants = ", ".join(ev.get("participants", []))
+                    line = f"{date} | {ev['time']} | {ev['title']} [{participants}]"
+
 
                 eventList.append((date, idx, ev))
                 listboxes[ev["category"]].insert(tk.END, line)
